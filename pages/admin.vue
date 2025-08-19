@@ -1,9 +1,9 @@
 <template>
   <div class="p-6">
-    <NuxtPage />
+    <NuxtPage/>
   </div>
 </template>
 
 <script setup lang="ts">
-definePageMeta({ layout: 'admin' });
+definePageMeta({layout: 'admin'});
 </script>

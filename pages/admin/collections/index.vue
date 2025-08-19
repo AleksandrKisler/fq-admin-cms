@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-6">
-    <section class="rounded-2xl overflow-hidden  shadow-lg">
-      <div class="bg-white">
+    <section class="rounded-2xl overflow-hidden shadow">
+      <div class="bg-white dark:bg-neutral-900 border border-gray-100 dark:border-white/10 rounded-2xl">
         <div class="px-6 py-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 class="text-2xl font-semibold">Коллекции</h1>
@@ -25,18 +25,19 @@
       </div>
     </section>
 
-    <el-card shadow="always" class="!rounded-2xl backdrop-blur bg-white/90 border border-gray-100">
+    <el-card shadow="always"
+             class="!rounded-2xl !shadow backdrop-blur bg-white/90 dark:bg-white/5 border border-gray-100 dark:border-white/10">
       <template #header>
         <div class="flex items-center justify-between">
-          <span class="text-gray-800 font-medium">Список коллекций</span>
-          <span class="text-sm text-gray-400">Обновлено: {{ nowLabel }}</span>
+          <span class="text-gray-800 dark:text-gray-50 font-medium">Список коллекций</span>
+          <span class="text-sm text-gray-400 dark:text-gray-200">Обновлено: {{ nowLabel }}</span>
         </div>
       </template>
 
       <el-skeleton v-if="loading" :rows="6" animated/>
 
       <template v-else>
-        <div class="overflow-hidden rounded-xl border border-gray-100">
+        <div class="overflow-hidden rounded-xl border border-gray-100 dark:border-gray-800">
           <el-table
               :data="pagedItems"
               row-key="id"
@@ -47,10 +48,8 @@
               class="modern-table w-full rounded-xl"
               @selection-change="onSelectionChange"
           >
-            <!-- чекбоксы -->
             <el-table-column type="selection" width="46"/>
 
-            <!-- название + мини-эмблема -->
             <el-table-column min-width="360">
               <template #header>
                 <span class="th">Название</span>
@@ -73,7 +72,6 @@
               </template>
             </el-table-column>
 
-            <!-- статус -->
             <el-table-column width="160" align="center">
               <template #header><span class="th">Статус</span></template>
               <template #default="{ row }">
@@ -125,7 +123,6 @@
               </template>
             </el-table-column>
 
-            <!-- пустое состояние -->
             <template #empty>
               <div class="py-14 text-center">
                 <p class="text-gray-500 mb-1">Пока нет коллекций</p>
@@ -138,7 +135,6 @@
           </el-table>
         </div>
 
-        <!-- пагинация -->
         <div class="mt-4 flex items-center justify-between gap-3">
           <div class="text-sm text-gray-500">
             Показаны {{ startIndex + 1 }}–{{ endIndex }} из {{ items.length }}

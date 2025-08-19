@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-6">
-    <section class="rounded-2xl overflow-hidden shadow-lg">
+    <section class="rounded-2xl overflow-hidden shadow">
       <div class="bg-white">
         <div class="px-6 py-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -19,7 +19,7 @@
       </div>
     </section>
 
-    <el-card shadow="always" class="!rounded-2xl backdrop-blur bg-white/90 border border-gray-100">
+    <el-card shadow="always" class="!rounded-2xl !shadow backdrop-blur bg-white/90 border border-gray-100">
       <template #header>
         <div class="flex items-center justify-between">
           <span class="text-gray-800 font-medium">Список главных</span>
@@ -28,6 +28,7 @@
       </template>
 
       <el-skeleton v-if="loading" :rows="6" animated/>
+
       <template v-else>
         <div class="overflow-hidden rounded-xl border border-gray-100">
           <el-table
@@ -41,40 +42,62 @@
               @selection-change="onSelectionChange"
           >
             <el-table-column type="selection" width="46"/>
-
-            <el-table-column label="Название" min-width="360">
+            <el-table-column min-width="360">
+              <template #header><span class="th">Название</span></template>
               <template #default="{ row }">
-                <div class="min-w-0">
-                  <div class="font-medium text-gray-900 truncate">{{ row.title }}</div>
-                  <div class="text-xs text-gray-400 mt-0.5">Slug: {{ row.slug }}</div>
+                <div class="flex items-center gap-3 min-w-0">
+                  <div
+                      class="h-8 w-8 rounded-lg bg-gradient-to-br from-purple-500 to-fuchsia-600 text-white grid place-items-center text-xs font-semibold shadow-sm">
+                    {{ (row.title || 'Г').slice(0, 1).toUpperCase() }}
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="font-medium text-gray-900 truncate">{{ row.title }}</div>
+                    <div class="text-xs text-gray-400 mt-0.5">/{{ row.slug || 'slug' }}</div>
+                  </div>
                 </div>
               </template>
             </el-table-column>
 
-            <el-table-column label="Статус" width="150" align="center">
+            <el-table-column width="140" align="center">
+              <template #header><span class="th">Статус</span></template>
               <template #default="{ row }">
-                <span
-                    class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium"
-                    :class="row.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'"
-                >
+                <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium"
+                      :class="row.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'">
                   <span class="h-2 w-2 rounded-full" :class="row.is_active ? 'bg-emerald-500' : 'bg-slate-400'"/>
                   {{ row.is_active ? 'Активна' : 'Черновик' }}
                 </span>
               </template>
             </el-table-column>
 
-            <el-table-column label="Опубликована" width="200">
+            <el-table-column width="160" align="center">
+              <template #header><span class="th">Баннеров</span></template>
               <template #default="{ row }">
-                <span class="text-gray-600">{{ formatDate(row.published_at) }}</span>
+                <span class="text-gray-700">
+                  {{ Object.values(row.banners || {}).filter(Boolean).length || 0 }}
+                </span>
               </template>
             </el-table-column>
 
-            <el-table-column width="220" fixed="right" align="right" label="Действия">
+            <el-table-column width="160" align="center">
+              <template #header><span class="th">Подборок</span></template>
+              <template #default="{ row }">
+                <span class="text-gray-700">
+                  {{ Object.values(row.selections || {}).filter(Boolean).length || 0 }}
+                </span>
+              </template>
+            </el-table-column>
+
+            <el-table-column width="200">
+              <template #header><span class="th">Обновлено</span></template>
+              <template #default="{ row }"><span class="text-gray-600">{{
+                  formatDate(row.updated_at || row.created_at)
+                }}</span></template>
+            </el-table-column>
+
+            <el-table-column width="140" fixed="right" align="right">
+              <template #header><span class="th">Действия</span></template>
               <template #default="{ row }">
                 <div class="flex items-center justify-end gap-1.5">
-                  <el-button size="small" :disabled="row.is_active" @click="publish(row.id)">
-                    Опубликовать
-                  </el-button>
                   <NuxtLink :to="`/admin/homepages/${row.id}`">
                     <el-tooltip content="Редактировать" placement="top">
                       <el-button size="small" circle>
@@ -84,7 +107,7 @@
                       </el-button>
                     </el-tooltip>
                   </NuxtLink>
-                  <el-popconfirm title="Удалить страницу?" @confirm="remove(row.id)">
+                  <el-popconfirm title="Удалить главную?" @confirm="remove(row.id)">
                     <template #reference>
                       <el-tooltip content="Удалить" placement="top">
                         <el-button size="small" circle type="danger">
@@ -101,8 +124,8 @@
 
             <template #empty>
               <div class="py-14 text-center">
-                <p class="text-gray-500 mb-1">Пока нет страниц</p>
-                <p class="text-sm text-gray-400 mb-4">Создайте первую главную страницу.</p>
+                <p class="text-gray-500 mb-1">Пока нет главных страниц</p>
+                <p class="text-sm text-gray-400 mb-4">Создайте первую конфигурацию главной.</p>
                 <NuxtLink to="/admin/homepages/create">
                   <el-button type="primary" :icon="Plus">Создать</el-button>
                 </NuxtLink>
@@ -124,71 +147,66 @@
 <script setup lang="ts">
 import {Plus, Delete, Edit} from '@element-plus/icons-vue'
 
-definePageMeta({layout: 'admin'});
-const {$api} = useNuxtApp();
-const items = ref<any[]>([]);
-const loading = ref(true);
-const selectedIds = ref<number[]>([]);
-const currentPage = ref(1);
-const pageSize = ref(10);
+definePageMeta({layout: 'admin'})
+const {$api} = useNuxtApp()
+
+const items = ref<any[]>([])
+const loading = ref(true)
+const selectedIds = ref<number[]>([])
+const currentPage = ref(1)
+const pageSize = ref(10)
 
 const fetchList = async () => {
-  loading.value = true;
+  loading.value = true
   try {
-    const r: any = await $api('/homepages', {query: {limit: 500}});
-    items.value = r.data || [];
+    const r: any = await $api('/homepages', {query: {limit: 500}})
+    items.value = r.data || r.items || r || []
   } catch {
-    ElMessage.error('Не удалось загрузить страницы');
+    ElMessage.error('Не удалось загрузить главные страницы')
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
-onMounted(fetchList);
+}
+onMounted(fetchList)
 
-const pagedItems = computed(() => items.value.slice((currentPage.value - 1) * pageSize.value, (currentPage.value) * pageSize.value));
-const startIndex = computed(() => (currentPage.value - 1) * pageSize.value);
-const endIndex = computed(() => Math.min(startIndex.value + pageSize.value, items.value.length));
+const pagedItems = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return items.value.slice(start, start + pageSize.value)
+})
+const startIndex = computed(() => (currentPage.value - 1) * pageSize.value)
+const endIndex = computed(() => Math.min(startIndex.value + pageSize.value, items.value.length))
 const formatDate = (v?: string) => v ? new Intl.DateTimeFormat('ru-RU', {
   year: 'numeric',
   month: '2-digit',
   day: '2-digit',
   hour: '2-digit',
   minute: '2-digit'
-}).format(new Date(v)) : '—';
-const nowLabel = computed(() => formatDate(new Date().toISOString()));
+}).format(new Date(v)) : '—'
+const nowLabel = computed(() => formatDate(new Date().toISOString()))
 const onSelectionChange = (rows: any[]) => {
-  selectedIds.value = rows.map(r => r.id);
-};
+  selectedIds.value = rows.map(r => r.id)
+}
 
-const publish = async (id: number) => {
-  try {
-    await $api(`/homepages/${id}/publish`, {method: 'POST'});
-    ElMessage.success('Опубликовано');
-    await fetchList();
-  } catch {
-    ElMessage.error('Ошибка публикации');
-  }
-};
 const remove = async (id: number) => {
   try {
     await $api(`/homepages/${id}`, {method: 'DELETE'});
-    ElMessage.success('Удалено');
-    await fetchList();
+    ElMessage.success('Главная удалена');
+    await fetchList()
   } catch {
-    ElMessage.error('Ошибка удаления');
+    ElMessage.error('Ошибка удаления')
   }
-};
+}
 const bulkRemove = async () => {
-  if (!selectedIds.value.length) return;
+  if (!selectedIds.value.length) return
   try {
-    await Promise.all(selectedIds.value.map(id => $api(`/homepages/${id}`, {method: 'DELETE'})));
-    ElMessage.success(`Удалено: ${selectedIds.value.length}`);
-    selectedIds.value = [];
-    await fetchList();
+    await Promise.all(selectedIds.value.map(id => $api(`/homepages/${id}`, {method: 'DELETE'})))
+    ElMessage.success(`Удалено: ${selectedIds.value.length}`)
+    selectedIds.value = []
+    await fetchList()
   } catch {
-    ElMessage.error('Ошибка массового удаления');
+    ElMessage.error('Ошибка массового удаления')
   }
-};
+}
 </script>
 
 <style scoped>
@@ -204,14 +222,14 @@ const bulkRemove = async () => {
   background-color: rgb(249 250 251 / 1);
   font-weight: 600;
   color: rgb(75 85 99 / 1);
-  letter-spacing: .01em
+  letter-spacing: .01em;
 }
 
 :deep(.modern-table .el-table__body tr:hover>td) {
-  background-color: rgba(99, 102, 241, .06)
+  background-color: rgba(99, 102, 241, .06);
 }
 
 :deep(.modern-table .el-table__row) {
-  transition: background-color .15s ease
+  transition: background-color .15s ease;
 }
 </style>

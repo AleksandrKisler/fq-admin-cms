@@ -1,49 +1,80 @@
 <template>
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-    <div class="max-w-3xl space-y-6">
-      <h1 class="text-2xl font-semibold">Новый баннер</h1>
+  <div class="space-y-6">
+    <AdminPageHeader
+        title="Новый баннер"
+        subtitle="Заполните базовую информацию, добавьте изображение и проверьте предпросмотр справа."
+    >
+      <template #actions>
+        <NuxtLink to="/admin/banners">
+          <el-button>Назад</el-button>
+        </NuxtLink>
+      </template>
+    </AdminPageHeader>
 
-      <el-form
-          :model="form"
-          :rules="rules"
-          ref="formRef"
-          label-width="180px"
-          status-icon
-          class="bg-white rounded-2xl shadow p-6"
-      >
-        <el-form-item label="Тип" prop="type">
-          <el-select v-model="form.type" placeholder="Выберите тип">
-            <el-option label="MAIN" value="MAIN"/>
-            <el-option label="INFORMATION" value="INFORMATION"/>
-            <el-option label="COLLECTION" value="COLLECTION"/>
-            <el-option label="PRODUCT" value="PRODUCT"/>
-          </el-select>
-        </el-form-item>
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div class="lg:col-span-7 space-y-6">
+        <AdminFormSection title="Основное" description="Тип баннера, расположение изображения и тексты.">
+          <el-form
+              ref="formRef"
+              :model="form"
+              :rules="rules"
+              label-position="top"
+              class="grid grid-cols-1 md:grid-cols-2 gap-4"
+          >
+            <div class="col-span-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Тип</label>
+              <AdminSegmented v-model="form.type" :options="typeOptions"/>
+              <p class="mt-1 text-xs text-gray-500">MAIN — герой; INFORMATION — сплит-баннер; остальное — фулл.</p>
+            </div>
 
-        <el-form-item label="Заголовок" prop="title">
-          <el-input v-model="form.title" placeholder="Напр., Новая коллекция"/>
-        </el-form-item>
+            <div class="col-span-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Расположение изображения</label>
+              <AdminSegmented v-model="form.image_position" :options="posOptions"/>
+            </div>
 
-        <el-form-item label="Описание" prop="description">
-          <el-input v-model="form.description" type="textarea" :rows="3" placeholder="Короткий описательный текст"/>
-        </el-form-item>
+            <div class="col-span-1 md:col-span-2">
+              <el-form-item prop="title" label="Заголовок">
+                <el-input v-model="form.title" placeholder='Курсив: *так*, _так_ или [i]так[/i]'/>
+              </el-form-item>
+            </div>
 
-        <el-form-item label="Позиция картинки" prop="image_position">
-          <el-select v-model="form.image_position">
-            <el-option label="DEFAULT" value="DEFAULT"/>
-            <el-option label="LEFT" value="LEFT"/>
-            <el-option label="RIGHT" value="RIGHT"/>
-          </el-select>
-        </el-form-item>
+            <div class="col-span-1 md:col-span-2">
+              <el-form-item prop="description" label="Описание">
+                <el-input v-model="form.description" type="textarea" :rows="3"
+                          placeholder="Можно выделять отдельные слова курсивом"/>
+              </el-form-item>
+            </div>
 
-        <el-form-item label="Источник (опц.)">
-          <el-input v-model="form.source_id" placeholder="например: selection:best-sellers"/>
-        </el-form-item>
+            <div class="col-span-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Цвет текста</label>
+              <div class="flex items-center gap-3">
+                <el-color-picker v-model="form.text_color"/>
+                <span class="text-xs text-gray-500">Применится к заголовку и описанию в превью</span>
+              </div>
+            </div>
 
-        <!-- Upload + URL -->
-        <el-form-item label="Изображение" prop="image_url">
-          <div class="w-full space-y-3">
+            <div class="col-span-1">
+              <el-form-item label="Активен">
+                <el-switch v-model="form.is_active"/>
+              </el-form-item>
+            </div>
+          </el-form>
+        </AdminFormSection>
+
+        <AdminFormSection title="Переход по кнопке" description="Для COLLECTION/PRODUCT кнопка становится активной.">
+          <el-form :model="form" label-position="top" class="grid grid-cols-1 gap-4">
+            <el-form-item label="Источник (опционально)" prop="source_id">
+              <el-input v-model="form.source_id"
+                        placeholder="Напр.: product:123 · collection:summer · selection:best-sellers"/>
+            </el-form-item>
+          </el-form>
+        </AdminFormSection>
+
+        <AdminFormSection title="Изображение" description="Загрузите файл или вставьте URL.">
+          <div class="grid grid-cols-1 gap-4">
             <el-upload
+                :key="uploadKey"
+                ref="uploadRef"
                 drag
                 :show-file-list="false"
                 accept="image/*"
@@ -52,11 +83,9 @@
                 :http-request="handleFileUpload"
                 class="w-full"
             >
-              <div class="el-upload__text">
-                Перетащите файл сюда или <em>нажмите для выбора</em>
-              </div>
+              <div class="el-upload__text">Перетащите файл или <em>выберите</em></div>
               <template #tip>
-                <div class="text-xs text-gray-500 mt-2">Допустимо: JPG/PNG/WebP, до 5 МБ.</div>
+                <div class="text-xs text-gray-500 mt-2">JPG/PNG/WebP, до 5 МБ</div>
               </template>
             </el-upload>
 
@@ -65,256 +94,273 @@
               <el-button v-if="previewUrl" @click="clearImage" type="warning" plain>Очистить</el-button>
             </div>
           </div>
-        </el-form-item>
+        </AdminFormSection>
+      </div>
 
-        <el-form-item label="Активен">
-          <el-switch v-model="form.is_active"/>
-        </el-form-item>
-
-        <el-form-item>
-          <el-button type="primary" :loading="saving" @click="submit">Сохранить</el-button>
-          <NuxtLink to="/admin/banners">
-            <el-button>Отмена</el-button>
-          </NuxtLink>
-        </el-form-item>
-      </el-form>
-    </div>
-
-    <aside class="lg:sticky lg:top-6">
-      <div class="bg-white rounded-2xl shadow p-6 space-y-6">
-        <h2 class="text-lg font-semibold text-gray-900">Предпросмотр</h2>
-
-        <div v-if="isMain" class="relative rounded-2xl overflow-hidden border bg-gray-50"
-             :style="{ height: previewHeight }">
-          <template v-if="previewUrl">
-            <img :src="previewUrl" class="absolute inset-0 w-full h-full object-cover"/>
-          </template>
-          <template v-else>
-            <div class="absolute inset-0 grid place-items-center text-gray-400 text-sm border-2 border-dashed">
+      <div class="lg:col-span-5">
+        <AdminFormSection title="Предпросмотр" description="Соотношение сторон подсказывает рекомендуемые размеры.">
+          <div v-if="isMain" class="relative rounded-2xl overflow-hidden border bg-gray-50 w-full"
+               :style="{ aspectRatio: aspect }">
+            <img v-if="previewUrl" :src="previewUrl" class="absolute inset-0 w-full h-full object-cover"/>
+            <div v-else class="absolute inset-0 grid place-items-center text-gray-400 text-sm border-2 border-dashed">
               Загрузите изображение или укажите URL
             </div>
-          </template>
-
-          <div class="absolute inset-0 grid place-items-center">
-            <div class="text-center px-6">
-              <div class="uppercase tracking-wide text-[14px] text-white font-medium mb-4 drop-shadow">
-                {{ form.title || 'SET YOUR GOALS HIGH' }}
-              </div>
-              <p class="text-[13px] text-white/90 leading-relaxed italic max-w-2xl mx-auto mb-5 drop-shadow">
-                {{ form.description || 'ВСЁ, ЧТО НУЖНО ЖЕНЩИНЕ, чтобы покорить мир, ЭТО УЛЫБКА И туфли.' }}
-              </p>
-              <div class="uppercase tracking-wide text-[13px] text-white font-semibold drop-shadow">
-                FOREVER QUEEN
+            <div class="absolute inset-0 grid place-items-center">
+              <div class="text-center px-6" :style="{ color: form.text_color }">
+                <div class="uppercase tracking-wide text-[14px] font-medium mb-4 drop-shadow"
+                     v-html="titleHtml || 'ЗИМНЯЯ КАПСУЛА'"/>
+                <p class="text-[13px] leading-relaxed max-w-2xl mx-auto mb-5 drop-shadow"
+                   v-html="descHtml || 'forever queen × EKONIKA «NEW YEAR’S PARTY»'"/>
+                <template v-if="ctaEnabled">
+                  <NuxtLink :to="ctaHref">
+                    <el-button type="primary" size="small">{{ ctaLabel }}</el-button>
+                  </NuxtLink>
+                </template>
+                <template v-else>
+                  <el-button size="small" plain disabled class="opacity-60 pointer-events-none">ПЕРЕЙТИ В КАТАЛОГ
+                  </el-button>
+                </template>
               </div>
             </div>
           </div>
-        </div>
 
-        <div v-else-if="isSplit" class="w-full rounded-2xl overflow-hidden border">
-          <div class="grid grid-cols-2 min-h-[320px]">
-            <div :class="imgFirst ? 'order-1' : 'order-2'" class="relative">
-              <template v-if="previewUrl">
-                <img :src="previewUrl" class="absolute inset-0 w-full h-full object-cover"/>
-              </template>
-              <template v-else>
-                <div class="absolute inset-0 grid place-items-center text-gray-400 text-sm border-2 border-dashed">
+          <div v-else-if="isSplit" class="w-full rounded-2xl overflow-hidden border" :style="{ aspectRatio: aspect }">
+            <div class="grid grid-cols-2 h-full">
+              <div :class="imgFirst ? 'order-1' : 'order-2'" class="relative">
+                <img v-if="previewUrl" :src="previewUrl" class="absolute inset-0 w-full h-full object-cover"/>
+                <div v-else
+                     class="absolute inset-0 grid place-items-center text-gray-400 text-sm border-2 border-dashed">
                   Фото ({{ imgFirst ? 'лево' : 'право' }})
                 </div>
-              </template>
-            </div>
-            <div :class="imgFirst ? 'order-2' : 'order-1'" class="relative bg-white">
-              <div class="absolute inset-0 flex items-center justify-center">
-                <div class="px-8 text-center max-w-md">
-                  <div class="uppercase tracking-wide text-[13px] text-gray-900 font-medium mb-5">
-                    {{ form.title || 'SET YOUR GOALS HIGH' }}
+              </div>
+              <div :class="imgFirst ? 'order-2' : 'order-1'" class="relative bg-white">
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <div class="px-8 text-center max-w-md" :style="{ color: form.text_color }">
+                    <div class="uppercase tracking-wide text-[13px] font-medium mb-5"
+                         v-html="titleHtml || 'SET YOUR GOALS HIGH'"/>
+                    <p class="text-[12px] leading-relaxed mb-5" v-html="descHtml || 'ВСЁ, ЧТО НУЖНО ЖЕНЩИНЕ…'"/>
+                    <template v-if="ctaEnabled">
+                      <NuxtLink :to="ctaHref">
+                        <el-button type="primary" plain size="small">{{ ctaLabel }}</el-button>
+                      </NuxtLink>
+                    </template>
+                    <template v-else>
+                      <el-button size="small" plain disabled class="opacity-60 pointer-events-none">ПЕРЕЙТИ В КАТАЛОГ
+                      </el-button>
+                    </template>
                   </div>
-                  <p class="text-[12px] text-gray-600 leading-relaxed italic mb-5">
-                    {{ form.description || 'ВСЁ, ЧТО НУЖНО ЖЕНЩИНЕ, чтобы покорить мир, ЭТО УЛЫБКА И туфли.' }}
-                  </p>
-                  <div v-if="showCTA" class="mb-5">
-                    <NuxtLink :to="ctaHref">
-                      <el-button type="primary" plain size="small">{{ ctaLabel }}</el-button>
-                    </NuxtLink>
-                  </div>
-                  <div class="uppercase tracking-wide text-[13px] text-gray-900 font-semibold">FOREVER QUEEN</div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div v-else class="relative rounded-2xl overflow-hidden border bg-gray-50" style="height: 320px;">
-          <template v-if="previewUrl">
-            <img :src="previewUrl" class="h-full w-full object-cover" alt="preview"/>
-          </template>
-          <template v-else>
-            <div class="h-full w-full grid place-items-center text-gray-400 text-sm border-2 border-dashed">
+          <div v-else class="relative rounded-2xl overflow-hidden border bg-gray-50 w-full"
+               :style="{ aspectRatio: aspect }">
+            <img v-if="previewUrl" :src="previewUrl" class="absolute inset-0 w-full h-full object-cover"/>
+            <div v-else class="absolute inset-0 grid place-items-center text-gray-400 text-sm border-2 border-dashed">
               Загрузите изображение или укажите URL
             </div>
-          </template>
-          <div class="absolute inset-y-0 flex p-6" :class="overlayAlign">
-            <div class="max-w-md space-y-2 text-white">
-              <div class="uppercase tracking-wide text-[13px] font-medium opacity-90">
-                {{ form.title || 'SET YOUR GOALS HIGH' }}
+            <div class="absolute inset-0 grid place-items-center">
+              <div class="text-center px-6" :style="{ color: form.text_color }">
+                <div class="uppercase tracking-wide text-[14px] font-medium mb-4 drop-shadow"
+                     v-html="titleHtml || 'ЗИМНЯЯ КАПСУЛА'"/>
+                <p class="text-[13px] leading-relaxed max-w-2xl mx-auto mb-5 drop-shadow"
+                   v-html="descHtml || 'forever queen × EKONIKA «NEW YEAR’S PARTY»'"/>
+                <template v-if="ctaEnabled">
+                  <NuxtLink :to="ctaHref">
+                    <el-button type="primary" plain size="small">{{ ctaLabel }}</el-button>
+                  </NuxtLink>
+                </template>
+                <template v-else>
+                  <el-button size="small" plain disabled class="opacity-60 pointer-events-none">ПЕРЕЙТИ В КАТАЛОГ
+                  </el-button>
+                </template>
               </div>
-              <p class="text-[12px] opacity-90 italic">
-                {{ form.description || 'ВСЁ, ЧТО НУЖНО ЖЕНЩИНЕ, чтобы покорить мир, ЭТО УЛЫБКА И туфли.' }}
-              </p>
-              <div v-if="showCTA">
-                <NuxtLink :to="ctaHref">
-                  <el-button type="primary" plain size="small">{{ ctaLabel }}</el-button>
-                </NuxtLink>
-              </div>
-              <div class="uppercase tracking-wide text-[13px] font-semibold opacity-95">FOREVER QUEEN</div>
             </div>
           </div>
-        </div>
 
-        <div class="text-xs text-gray-500">
-          Рекомендованные размеры:
-          <span v-if="isMain">~1600×750 (герой, 1.5×)</span>
-          <span v-else-if="isSplit">~1600×900 (1:1 по ширине половин)</span>
-          <span v-else>~1400×500</span>.
-        </div>
+          <div class="text-xs text-gray-600 mt-4">
+            <div><span class="font-medium">Тип:</span> {{ ratioHint.label }}</div>
+            <div><span class="font-medium">Рекомендованный размер:</span> {{ ratioHint.wh }} <span
+                v-if="ratioHint.extra">· {{ ratioHint.extra }}</span></div>
+            <div><span class="font-medium">Соотношение (превью):</span> {{ ratioHint.ratio }}</div>
+          </div>
+        </AdminFormSection>
       </div>
-    </aside>
+    </div>
 
-
+    <AdminStickyActions>
+      <template #meta>
+        Все изменения сохраняются в FQ Admin CRM
+      </template>
+      <el-button @click="cancel">Отмена</el-button>
+      <el-button type="primary" :loading="saving" @click="submit">Сохранить</el-button>
+    </AdminStickyActions>
   </div>
 </template>
 
 <script setup lang="ts">
-definePageMeta({layout: 'admin'});
-import type {FormInstance, FormRules} from 'element-plus'
+definePageMeta({layout: 'admin'})
+import type {FormInstance, FormRules, UploadInstance} from 'element-plus'
+import AdminPageHeader from '~/components/admin/ui/AdminPageHeader.vue'
+import AdminFormSection from '~/components/admin/ui/AdminFormSection.vue'
+import AdminStickyActions from '~/components/admin/ui/AdminStickyActions.vue'
+import AdminSegmented from '~/components/admin/ui/AdminSegmented.vue'
 import {isValidImageUrl} from '~/utils/validators'
+import {renderItalicsToHtml} from '~/utils/markup'
 
-const BASE_H = 320;
-const isMain = computed(() => form.type === 'MAIN');
-const previewHeight = computed(() => isMain.value ? `${Math.round(BASE_H * 1.5)}px` : `${BASE_H}px`);
+const {$api, $fileUrl} = useNuxtApp()
 
-const {$api} = useNuxtApp();
+const formRef = ref<FormInstance>()
+const saving = ref(false)
+const uploadRef = ref<UploadInstance | null>(null)
+const uploadKey = ref(0)
+const tempPreviewUrl = ref<string>('')
 
-const formRef = ref<FormInstance>();
-const saving = ref(false);
-const tempPreviewUrl = ref<string>(''); // blob URL для мгновенного превью
+const typeOptions = [
+  {label: 'MAIN', value: 'MAIN'},
+  {label: 'INFORMATION', value: 'INFORMATION'},
+  {label: 'COLLECTION', value: 'COLLECTION'},
+  {label: 'PRODUCT', value: 'PRODUCT'}
+]
+const posOptions = [
+  {label: 'DEFAULT', value: 'DEFAULT'},
+  {label: 'LEFT', value: 'LEFT'},
+  {label: 'RIGHT', value: 'RIGHT'}
+]
 
 const form = reactive({
-  type: 'INFORMATION',
+  type: 'INFORMATION' as 'MAIN' | 'INFORMATION' | 'COLLECTION' | 'PRODUCT',
+  image_position: 'DEFAULT' as 'DEFAULT' | 'LEFT' | 'RIGHT',
   title: '',
   description: '',
+  text_color: '#000000',
   source_id: '',
-  image_position: 'DEFAULT',
   image_url: '',
   is_active: true
-});
+})
 
 const rules: FormRules = {
   type: [{required: true, message: 'Тип обязателен', trigger: 'change'}],
+  image_position: [{required: true, message: 'Укажите позицию', trigger: 'change'}],
   title: [{required: true, message: 'Заголовок обязателен', trigger: 'blur'}],
   description: [{required: true, message: 'Описание обязательно', trigger: 'blur'}],
-  image_position: [{required: true, message: 'Укажите позицию', trigger: 'change'}],
   image_url: [{
     validator: (_r, v, cb) => {
-      if (tempPreviewUrl.value) return cb(); // файл выбран — ок
-      if (isValidImageUrl(v)) return cb();   // полный URL либо /images/...
-      cb(new Error('Укажите корректный URL или загрузите файл'));
+      if (tempPreviewUrl.value) return cb()
+      if (isValidImageUrl(v)) return cb()
+      cb(new Error('Укажите корректный URL или загрузите файл'))
     },
     trigger: ['change', 'blur']
   }]
-};
+}
 
-const previewUrl = computed(() => tempPreviewUrl.value || form.image_url || '');
+const previewUrl = computed(() => tempPreviewUrl.value || $fileUrl(form.image_url) || '')
+const isMain = computed(() => form.type === 'MAIN')
+const isSplit = computed(() => form.type === 'INFORMATION' && ['LEFT', 'RIGHT'].includes(form.image_position))
+const imgFirst = computed(() => form.image_position === 'LEFT')
 
-const overlayAlign = computed(() => {
-  if (form.image_position === 'RIGHT') return 'items-center justify-end text-right';
-  if (form.image_position === 'LEFT') return 'items-center justify-start text-left';
-  return 'items-center justify-start text-left';
-});
+const aspect = computed(() => isMain.value ? '1920 / 2160' : '1920 / 1080')
+const ratioHint = computed(() => {
+  switch (form.type) {
+    case 'MAIN':
+      return {label: 'MAIN', wh: '1920×2160', ratio: '≈0.89:1 (портрет)'}
+    case 'COLLECTION':
+    case 'PRODUCT':
+      return {label: 'COLLECTION / PRODUCT', wh: '1920×1080', ratio: '16:9 (≈1.78:1)'}
+    case 'INFORMATION':
+      return {
+        label: 'INFORMATION',
+        wh: '960×1080 (фото-половина)',
+        extra: 'Общий блок 1920×1080',
+        ratio: '≈0.89:1 / общий 16:9'
+      }
+    default:
+      return {label: 'DEFAULT', wh: '1920×1080', ratio: '16:9'}
+  }
+})
 
-const isSplit = computed(() => ['LEFT', 'RIGHT'].includes(form.image_position as string));
-const imgFirst = computed(() => form.image_position === 'LEFT');
-
-const showCTA = computed(() => ['COLLECTION', 'PRODUCT'].includes(form.type as string));
-const ctaLabel = computed(() => {
-  if (form.type === 'PRODUCT') return 'К товару';
-  if (form.type === 'COLLECTION') return 'В коллекцию';
-  return 'Перейти';
-});
-
+const ctaEnabled = computed(() =>
+    ['COLLECTION', 'PRODUCT'].includes(form.type) && !!String(form.source_id || '').trim()
+)
+const ctaLabel = computed(() => form.type === 'PRODUCT' ? 'К товару' : 'В коллекцию')
 const ctaHref = computed(() => {
-  const src = String(form.source_id || '').trim();
-  if (!src) return '#';
-  const [kind, value] = src.split(':');
-  if (!value) return '#';
+  if (!ctaEnabled.value) return '#'
+  const [kind, value] = String(form.source_id).split(':')
+  if (!value) return '#'
   switch ((kind || '').toLowerCase()) {
     case 'product':
-      return `/product/${value}`;
+      return `/product/${value}`
     case 'collection':
-      return `/collections/${value}`;
+      return `/collections/${value}`
     case 'selection':
-      return `/selections/${value}`;
+      return `/selections/${value}`
     default:
-      return '#';
+      return '#'
   }
-});
+})
 
+const titleHtml = computed(() => renderItalicsToHtml(form.title))
+const descHtml = computed(() => renderItalicsToHtml(form.description))
 
-const clearImage = () => {
-  tempPreviewUrl.value = '';
-  form.image_url = '';
-};
-
-// ——— Upload ———
 const handleBeforeUpload = (file: File) => {
-  const okType = /image\/(jpeg|png|webp)/i.test(file.type);
-  const okSize = file.size / 1024 / 1024 <= 5;
-  if (!okType) ElMessage.error('Поддерживаются JPG/PNG/WebP');
-  if (!okSize) ElMessage.error('Размер файла не должен превышать 5 МБ');
-  return okType && okSize;
-};
-
+  const okType = /image\/(jpeg|png|webp)/i.test(file.type)
+  const okSize = file.size / 1024 / 1024 <= 5
+  if (!okType) ElMessage.error('Поддерживаются JPG/PNG/WebP')
+  if (!okSize) ElMessage.error('Размер файла не должен превышать 5 МБ')
+  return okType && okSize
+}
 const handleFileUpload = async (opts: any) => {
-  const {file, onSuccess, onError} = opts;
+  const {file, onSuccess, onError} = opts
   try {
-    if (process.client) tempPreviewUrl.value = URL.createObjectURL(file as File);
-
-    const fd = new FormData();
-    fd.append('file', file as File); // 👈 имя поля — 'file'
-
-    const resp: any = await $api('/uploads/images', {method: 'POST', body: fd});
-
-    form.image_url = resp?.file_url || resp?.file_path || form.image_url;
-
-    onSuccess?.(resp);
-    ElMessage.success('Файл загружен');
+    if (process.client) {
+      if (tempPreviewUrl.value) URL.revokeObjectURL(tempPreviewUrl.value)
+      tempPreviewUrl.value = URL.createObjectURL(file as File)
+    }
+    const fd = new FormData()
+    fd.append('file', file as File)
+    const resp: any = await $api('/uploads/images', {method: 'POST', body: fd})
+    form.image_url = resp?.file_url || resp?.file_path || ''
+    if (tempPreviewUrl.value) {
+      URL.revokeObjectURL(tempPreviewUrl.value);
+      tempPreviewUrl.value = ''
+    }
+    resetUploader()
+    onSuccess?.(resp)
+    ElMessage.success('Файл загружен')
   } catch (e) {
-    onError?.(e);
-    ElMessage.error('Ошибка загрузки файла');
-    tempPreviewUrl.value = '';
+    onError?.(e)
+    ElMessage.error('Ошибка загрузки файла')
+    if (tempPreviewUrl.value) {
+      URL.revokeObjectURL(tempPreviewUrl.value);
+      tempPreviewUrl.value = ''
+    }
+    resetUploader()
   }
-};
+}
+const resetUploader = () => {
+  uploadKey.value++
+}
+const clearImage = () => {
+  if (tempPreviewUrl.value) URL.revokeObjectURL(tempPreviewUrl.value)
+  tempPreviewUrl.value = ''
+  form.image_url = ''
+  resetUploader()
+}
 
 const submit = async () => {
-  const ok = await formRef.value?.validate().catch(() => false);
-  if (!ok) return;
-  saving.value = true;
+  const ok = await formRef.value?.validate().catch(() => false)
+  if (!ok) return
+  saving.value = true
   try {
-    await $api('/banners', {method: 'POST', body: form});
-    ElMessage.success('Создано');
-    navigateTo('/admin/banners');
+    await $api('/banners', {method: 'POST', body: form})
+    ElMessage.success('Создано')
+    navigateTo('/admin/banners')
   } catch {
-    ElMessage.error('Ошибка сохранения');
+    ElMessage.error('Ошибка сохранения')
   } finally {
-    saving.value = false;
+    saving.value = false
   }
-};
-</script>
-
-<style scoped>
-.line-clamp-3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
-</style>
+const cancel = () => navigateTo('/admin/banners')
+</script>
