@@ -2,38 +2,33 @@
   <div class="space-y-6">
     <AdminPageHeader title="Новая главная" subtitle="Соберите страницу из баннеров и подборок.">
       <template #actions>
-        <NuxtLink to="/admin/homepages">
-          <el-button>Назад</el-button>
-        </NuxtLink>
+        <div class="flex items-center gap-2">
+          <el-button @click="openCopyDialog" :loading="copy.loading">Скопировать из…</el-button>
+          <el-popconfirm title="Очистить все слоты?" @confirm="clearAll">
+            <template #reference>
+              <el-button type="warning" plain>Очистить все</el-button>
+            </template>
+          </el-popconfirm>
+          <NuxtLink to="/admin/homepages"><el-button>Назад</el-button></NuxtLink>
+        </div>
       </template>
     </AdminPageHeader>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <!-- FORM + STICKY NAV -->
-      <div class="lg:col-span-7">
+      <!-- Левая колонка: оглавление + форма -->
+      <div class="lg:col-span-8">
         <div class="grid grid-cols-12 gap-6">
-          <!-- sticky оглавление -->
+          <!-- sticky оглавление (заменено на AdminAnchorNav) -->
           <aside class="col-span-3 hidden xl:block">
-            <nav
-                class="sticky top-20 space-y-1 p-3 rounded-xl border bg-white dark:bg-neutral-900 border-gray-100 dark:border-white/10">
-              <div class="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1">Навигация</div>
-              <button
-                  v-for="item in formNav"
-                  :key="item.id"
-                  @click="scrollTo(item.id)"
-                  class="w-full text-left px-3 py-2 rounded-lg transition"
-                  :class="activeSection===item.id
-                    ? 'bg-indigo-50 dark:bg-white/10 text-indigo-700 dark:text-white'
-                    : 'hover:bg-gray-50 dark:hover:bg-white/5 text-gray-700 dark:text-gray-300'"
-              >
-                {{ item.label }}
-              </button>
-            </nav>
+            <div class="sticky top-20">
+              <AdminAnchorNav :items="navItems" :offset="72" />
+            </div>
           </aside>
 
-          <!-- сама форма -->
+          <!-- Форма -->
           <div class="col-span-12 xl:col-span-9 space-y-6">
-            <section :id="SEC_MAIN" ref="secMain">
+            <!-- Основное -->
+            <section id="sec-main">
               <AdminFormSection title="Основное">
                 <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="grid grid-cols-1 gap-4">
                   <el-form-item label="Название" prop="title">
@@ -51,51 +46,97 @@
               </AdminFormSection>
             </section>
 
-            <section :id="SEC_BANNERS" ref="secBanners">
-              <AdminFormSection title="Баннеры" description="Выберите баннеры для слотов.">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <el-form-item label="main">
-                    <el-select v-model="form.banners.main" filterable clearable :loading="loading.banners">
-                      <el-option v-for="b in banners" :key="b.id" :label="b.title" :value="b.id"/>
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="slot-1">
-                    <el-select v-model="form.banners['slot-1']" filterable clearable :loading="loading.banners">
-                      <el-option v-for="b in banners" :key="b.id" :label="b.title" :value="b.id"/>
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="slot-2">
-                    <el-select v-model="form.banners['slot-2']" filterable clearable :loading="loading.banners">
-                      <el-option v-for="b in banners" :key="b.id" :label="b.title" :value="b.id"/>
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="slot-3">
-                    <el-select v-model="form.banners['slot-3']" filterable clearable :loading="loading.banners">
-                      <el-option v-for="b in banners" :key="b.id" :label="b.title" :value="b.id"/>
-                    </el-select>
-                  </el-form-item>
-                </div>
-              </AdminFormSection>
-            </section>
+            <!-- Конструктор блоков: предпросмотр + управление в одной плоскости -->
+            <section id="sec-builder">
+              <AdminFormSection
+                  title="Конструктор блоков"
+                  description="Блоки расположены строго в порядке вывода. Для каждого можно выбрать, заменить или удалить."
+              >
+                <div class="space-y-6">
+                  <!-- 1. banners - main (x2 высота) -->
+                  <section id="blk-main">
+                    <BlockEditorRow
+                        label="Баннер: main"
+                        kind="banner"
+                        v-model="form.banners.main"
+                        :items="banners"
+                        :loading="loading.banners"
+                        placeholder="Баннер: main"
+                        :double="true"
+                    />
+                  </section>
 
-            <section :id="SEC_SELECTIONS" ref="secSelections">
-              <AdminFormSection title="Подборки">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <el-form-item label="slot-1">
-                    <el-select v-model="form.selections['slot-1']" filterable clearable :loading="loading.selections">
-                      <el-option v-for="s in selections" :key="s.id" :label="s.title" :value="s.id"/>
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="slot-2">
-                    <el-select v-model="form.selections['slot-2']" filterable clearable :loading="loading.selections">
-                      <el-option v-for="s in selections" :key="s.id" :label="s.title" :value="s.id"/>
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="slot-3">
-                    <el-select v-model="form.selections['slot-3']" filterable clearable :loading="loading.selections">
-                      <el-option v-for="s in selections" :key="s.id" :label="s.title" :value="s.id"/>
-                    </el-select>
-                  </el-form-item>
+                  <!-- 2. selections - slot-1 -->
+                  <section id="blk-sel-1">
+                    <BlockEditorRow
+                        label="Подборка: slot-1"
+                        kind="selection"
+                        v-model="form.selections['slot-1']"
+                        :items="selections"
+                        :loading="loading.selections"
+                        placeholder="Подборка: slot-1"
+                    />
+                  </section>
+
+                  <!-- 3. banners - slot-1 -->
+                  <section id="blk-ban-1">
+                    <BlockEditorRow
+                        label="Баннер: slot-1"
+                        kind="banner"
+                        v-model="form.banners['slot-1']"
+                        :items="banners"
+                        :loading="loading.banners"
+                        placeholder="Баннер: slot-1"
+                    />
+                  </section>
+
+                  <!-- 4. selections - slot-2 -->
+                  <section id="blk-sel-2">
+                    <BlockEditorRow
+                        label="Подборка: slot-2"
+                        kind="selection"
+                        v-model="form.selections['slot-2']"
+                        :items="selections"
+                        :loading="loading.selections"
+                        placeholder="Подборка: slot-2"
+                    />
+                  </section>
+
+                  <!-- 5. banners - slot-2 -->
+                  <section id="blk-ban-2">
+                    <BlockEditorRow
+                        label="Баннер: slot-2"
+                        kind="banner"
+                        v-model="form.banners['slot-2']"
+                        :items="banners"
+                        :loading="loading.banners"
+                        placeholder="Баннер: slot-2"
+                    />
+                  </section>
+
+                  <!-- 6. banners - slot-3 -->
+                  <section id="blk-ban-3">
+                    <BlockEditorRow
+                        label="Баннер: slot-3"
+                        kind="banner"
+                        v-model="form.banners['slot-3']"
+                        :items="banners"
+                        :loading="loading.banners"
+                        placeholder="Баннер: slot-3"
+                    />
+                  </section>
+
+                  <!-- 7. selections - slot-3 -->
+                  <section id="blk-sel-3">
+                    <BlockEditorRow
+                        label="Подборка: slot-3"
+                        kind="selection"
+                        v-model="form.selections['slot-3']"
+                        :items="selections"
+                        :loading="loading.selections"
+                        placeholder="Подборка: slot-3"
+                    />
+                  </section>
                 </div>
               </AdminFormSection>
             </section>
@@ -103,17 +144,25 @@
         </div>
       </div>
 
-      <div class="lg:col-span-5">
-        <AdminFormSection title="Предпросмотр" description="Слоты показаны в порядке реального отображения.">
-          <div class="space-y-5">
-            <PreviewRow
-                v-for="blk in previewOrder" :key="blk.key"
-                :label="blk.label"
-                :kind="blk.kind"
-                :double="blk.double"
-                :title="getTitle(blk)"
-                :emptyText="blk.empty"
-            />
+      <!-- Правая колонка: подсказки и быстрые действия -->
+      <div class="lg:col-span-4 space-y-6">
+        <AdminFormSection title="Подсказки">
+          <ul class="text-sm leading-6 text-gray-600 dark:text-gray-300 list-disc pl-5">
+            <li><b>main</b> — в 2 раза выше остальных.</li>
+            <li>Если слот пуст — показывается плейсхолдер.</li>
+            <li>Для баннеров можно подтягивать preview по <code>image_url</code>.</li>
+            <li>Slug генерируется из названия, но можно вручную скорректировать.</li>
+          </ul>
+        </AdminFormSection>
+
+        <AdminFormSection title="Быстрые действия">
+          <div class="flex flex-col gap-2">
+            <el-button :loading="copy.loading" @click="openCopyDialog">Скопировать из существующей</el-button>
+            <el-popconfirm title="Очистить все слоты?" @confirm="clearAll">
+              <template #reference>
+                <el-button class="!ml-0" type="warning" plain>Очистить все</el-button>
+              </template>
+            </el-popconfirm>
           </div>
         </AdminFormSection>
       </div>
@@ -124,23 +173,60 @@
       <el-button @click="cancel">Отмена</el-button>
       <el-button type="primary" :loading="saving" @click="submit">Сохранить</el-button>
     </AdminStickyActions>
+
+    <!-- Диалог «Скопировать из…» -->
+    <el-dialog v-model="copy.open" title="Скопировать блоки из главной" width="720px">
+      <div class="space-y-3">
+        <el-select v-model="copy.selectedId" class="w-full" filterable placeholder="Выберите главную" :loading="copy.loading">
+          <el-option
+              v-for="hp in copy.list"
+              :key="hp.id"
+              :label="`${hp.title} (${hp.slug})`"
+              :value="hp.id"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <span class="truncate">{{ hp.title }}</span>
+              <span class="text-xs text-gray-400">/{{ hp.slug }}</span>
+            </div>
+          </el-option>
+        </el-select>
+
+        <el-alert
+            v-if="copy.selectedId"
+            type="info"
+            :closable="false"
+            show-icon
+            title="Будут перенесены: banners.main, banners.slot-1..3, selections.slot-1..3"
+        />
+      </div>
+
+      <template #footer>
+        <div class="flex items-center justify-end gap-2">
+          <el-button @click="copy.open=false">Отмена</el-button>
+          <el-button type="primary" :disabled="!copy.selectedId" @click="applyCopy">Копировать</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import PreviewRow from '~/components/admin/homepages/PreviewRow.vue'
+import type { FormInstance, FormRules } from 'element-plus'
 import AdminPageHeader from '~/components/admin/ui/AdminPageHeader.vue'
 import AdminFormSection from '~/components/admin/ui/AdminFormSection.vue'
 import AdminStickyActions from '~/components/admin/ui/AdminStickyActions.vue'
-import type {FormInstance, FormRules} from 'element-plus'
-import {isValidSlug} from '~/utils/validators'
+import BlockEditorRow from '~/components/admin/homepages/BlockEditorRow.vue'
+import AdminAnchorNav from '~/components/admin/ui/AdminAnchorNav.vue'
+import { isValidSlug } from '~/utils/validators'
 
-definePageMeta({layout: 'admin'})
-const {$api} = useNuxtApp()
+definePageMeta({ layout: 'admin' })
+const { $api } = useNuxtApp()
 
+/* -------- форма -------- */
 const formRef = ref<FormInstance>()
 const saving = ref(false)
-const loading = reactive({banners: false, selections: false})
+const loading = reactive({ banners: false, selections: false })
+
 const banners = ref<any[]>([])
 const selections = ref<any[]>([])
 
@@ -148,15 +234,15 @@ const form = reactive({
   title: 'Главная по умолчанию',
   slug: 'home-default',
   is_active: true,
-  banners: {main: null as any, 'slot-1': null as any, 'slot-2': null as any, 'slot-3': null as any},
-  selections: {'slot-1': null as any, 'slot-2': null as any, 'slot-3': null as any}
+  banners: { main: null as number | null, 'slot-1': null as number | null, 'slot-2': null as number | null, 'slot-3': null as number | null },
+  selections: { 'slot-1': null as number | null, 'slot-2': null as number | null, 'slot-3': null as number | null }
 })
 
 const rules: FormRules = {
-  title: [{required: true, message: 'Название обязательно', trigger: 'blur'}],
+  title: [{ required: true, message: 'Название обязательно', trigger: 'blur' }],
   slug: [
-    {required: true, message: 'Slug обязателен', trigger: 'blur'},
-    {validator: (_r, v, cb) => isValidSlug(v) ? cb() : cb(new Error('Неверный формат slug')), trigger: 'blur'}
+    { required: true, message: 'Slug обязателен', trigger: 'blur' },
+    { validator: (_r, v, cb) => isValidSlug(v) ? cb() : cb(new Error('Неверный формат slug')), trigger: 'blur' }
   ]
 }
 const slugify = (s: string) =>
@@ -165,84 +251,90 @@ const slugify = (s: string) =>
         .replace(/\s+/g, '-')
         .replace(/-+/g, '-')
         .slice(0, 80)
-const autoSlug = () => {
-  if (!form.slug) form.slug = slugify(form.title)
-}
+const autoSlug = () => { if (!form.slug) form.slug = slugify(form.title) }
 
-const SEC_MAIN = 'sec-main'
-const SEC_BANNERS = 'sec-banners'
-const SEC_SELECTIONS = 'sec-selections'
-const formNav = [
-  {id: SEC_MAIN, label: 'Основное'},
-  {id: SEC_BANNERS, label: 'Баннеры'},
-  {id: SEC_SELECTIONS, label: 'Подборки'}
-]
-const activeSection = ref<string>(SEC_MAIN)
-const secMain = ref<HTMLElement | null>(null)
-const secBanners = ref<HTMLElement | null>(null)
-const secSelections = ref<HTMLElement | null>(null)
+/* --- элементы навигации для AdminAnchorNav --- */
+const navItems = computed(() => [
+  { id: 'sec-main', label: 'Основное' },
+  {
+    id: 'sec-builder',
+    label: 'Конструктор',
+    children: [
+      { id: 'blk-main',  label: 'Главный Баннер' },
+      { id: 'blk-sel-1', label: 'Подборка 1' },
+      { id: 'blk-ban-1', label: 'Баннер 1' },
+      { id: 'blk-sel-2', label: 'Подборка 2' },
+      { id: 'blk-ban-2', label: 'Баннер 2' },
+      { id: 'blk-ban-3', label: 'Баннер 3' },
+      { id: 'blk-sel-3', label: 'Подборка 3' },
+    ],
+  },
+])
 
-const scrollTo = (id: string) => {
-  const el = document.getElementById(id)
-  if (!el) return
-  const headerOffset = 72 // высота липкой шапки
-  const top = el.getBoundingClientRect().top + window.scrollY - headerOffset
-  window.scrollTo({top, behavior: 'smooth'})
-}
-
-onMounted(() => {
-  // подсветка активного раздела
-  const io = new IntersectionObserver((entries) => {
-        // выбираем самую видимую секцию
-        const visible = entries
-            .filter(e => e.isIntersecting)
-            .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
-        if (visible?.target?.id) activeSection.value = visible.target.id
-      }, {rootMargin: '-80px 0px -60% 0px', threshold: [0.1, 0.25, 0.5, 0.75]})
-  ;[secMain.value, secBanners.value, secSelections.value].forEach(el => el && io.observe(el))
-})
-
+/* --- загрузка справочников --- */
 onMounted(async () => {
-  try {
-    loading.banners = true;
-    const r: any = await $api('/banners', {query: {limit: 1000}});
-    banners.value = r.data || r.items || r || []
-  } finally {
-    loading.banners = false
-  }
-  try {
-    loading.selections = true;
-    const r: any = await $api('/selections', {query: {limit: 1000}});
-    selections.value = r.data || r.items || r || []
-  } finally {
-    loading.selections = false
-  }
+  try { loading.banners = true; const r:any = await $api('/banners', { query:{ limit: 1000 } }); banners.value = r.data || r.items || r || [] }
+  finally { loading.banners = false }
+  try { loading.selections = true; const r:any = await $api('/selections', { query:{ limit: 1000 } }); selections.value = r.data || r.items || r || [] }
+  finally { loading.selections = false }
 })
 
-/* ----------------- предпросмотр: порядок и заголовки ----------------- */
-const previewOrder = computed(() => ([
-  {key: 'b-main', label: 'Баннер: main', kind: 'banner', slot: 'main', empty: 'Баннер: main', double: true},
-  {key: 's-1', label: 'Подборка: slot-1', kind: 'selection', slot: 'slot-1', empty: 'Подборка: slot-1'},
-  {key: 'b-1', label: 'Баннер: slot-1', kind: 'banner', slot: 'slot-1', empty: 'Баннер: slot-1'},
-  {key: 's-2', label: 'Подборка: slot-2', kind: 'selection', slot: 'slot-2', empty: 'Подборка: slot-2'},
-  {key: 'b-2', label: 'Баннер: slot-2', kind: 'banner', slot: 'slot-2', empty: 'Баннер: slot-2'},
-  {key: 'b-3', label: 'Баннер: slot-3', kind: 'banner', slot: 'slot-3', empty: 'Баннер: slot-3'},
-  {key: 's-3', label: 'Подборка: slot-3', kind: 'selection', slot: 'slot-3', empty: 'Подборка: slot-3'},
-]))
-const bannerTitle = (id?: number | string) => banners.value.find(b => String(b.id) === String(id))?.title
-const selectionTitle = (id?: number | string) => selections.value.find(s => String(s.id) === String(id))?.title
-const getTitle = (blk: any) => blk.kind === 'banner'
-    ? bannerTitle((form.banners as any)[blk.slot])
-    : selectionTitle((form.selections as any)[blk.slot])
+/* --- действия --- */
+const clearAll = () => {
+  form.banners.main = null
+  form.banners['slot-1'] = null
+  form.banners['slot-2'] = null
+  form.banners['slot-3'] = null
+  form.selections['slot-1'] = null
+  form.selections['slot-2'] = null
+  form.selections['slot-3'] = null
+  ElMessage.success('Все слоты очищены')
+}
 
-/* ----------------- сохранение ----------------- */
+const copy = reactive({
+  open: false,
+  loading: false,
+  list: [] as any[],
+  selectedId: null as number | null
+})
+
+const openCopyDialog = async () => {
+  copy.open = true
+  if (copy.list.length) return
+  try {
+    copy.loading = true
+    const r:any = await $api('/homepages', { query:{ limit: 1000 } })
+    copy.list = r.data || r.items || r || []
+  } catch {
+    ElMessage.error('Не удалось загрузить список главных')
+  } finally {
+    copy.loading = false
+  }
+}
+
+const applyCopy = () => {
+  const hp:any = copy.list.find(h => String(h.id) === String(copy.selectedId))
+  if (!hp) return
+  const srcB = hp.banners || {}
+  const srcS = hp.selections || {}
+  form.banners.main     = srcB.main    ?? null
+  form.banners['slot-1'] = srcB['slot-1'] ?? null
+  form.banners['slot-2'] = srcB['slot-2'] ?? null
+  form.banners['slot-3'] = srcB['slot-3'] ?? null
+  form.selections['slot-1'] = srcS['slot-1'] ?? null
+  form.selections['slot-2'] = srcS['slot-2'] ?? null
+  form.selections['slot-3'] = srcS['slot-3'] ?? null
+  copy.open = false
+  ElMessage.success('Блоки скопированы')
+}
+
 const submit = async () => {
   const ok = await formRef.value?.validate().catch(() => false)
   if (!ok) return
   saving.value = true
   try {
-    await $api('/homepages', {method: 'POST', body: form})
-    ElMessage.success('Создано');
+    await $api('/homepages', { method:'POST', body: form })
+    ElMessage.success('Создано')
     navigateTo('/admin/homepages')
   } catch {
     ElMessage.error('Ошибка сохранения')
@@ -252,3 +344,7 @@ const submit = async () => {
 }
 const cancel = () => navigateTo('/admin/homepages')
 </script>
+
+<style scoped>
+/* no-op */
+</style>
