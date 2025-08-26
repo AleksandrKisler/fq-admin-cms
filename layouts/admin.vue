@@ -201,7 +201,7 @@
 <script setup lang="ts">
 import {
   Menu, User, ArrowDown, Fold, Expand, Search, Sunny, Moon,
-  House, PictureFilled, Collection, List, HomeFilled
+  House, PictureFilled, Collection, List, HomeFilled, Pear
 } from '@element-plus/icons-vue'
 import CommandPalette from '~/components/admin/ui/CommandPalette.vue'
 
@@ -213,7 +213,8 @@ const nav = [
   {label: 'Баннеры', to: '/admin/banners', icon: PictureFilled},
   {label: 'Коллекции', to: '/admin/collections', icon: Collection},
   {label: 'Подборки', to: '/admin/selections', icon: List},
-  {label: 'Главная', to: '/admin/homepages', icon: HomeFilled}
+  {label: 'Главная', to: '/admin/homepages', icon: HomeFilled},
+  {label: 'Блог', to: '/admin/articles', icon: Pear}
 ]
 
 const activeIndex = computed(() => {
