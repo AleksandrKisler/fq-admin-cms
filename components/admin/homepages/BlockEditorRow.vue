@@ -70,27 +70,18 @@
     <!-- превью -->
     <div>
       <BannerPreviewMini v-if="kind==='banner'" :banner="current" :double="double"/>
-      <div v-else
-           class="rounded-xl overflow-hidden border border-gray-100 dark:border-white/10 bg-white dark:bg-neutral-900 grid place-items-center text-center px-4"
-           :class="double ? 'aspect-[16/18]' : 'aspect-[16/9]'">
-        <template v-if="current">
-          <div>
-            <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Подборка</div>
-            <div class="font-medium truncate max-w-[80%] mx-auto text-gray-900 dark:text-white">
-              {{ current.title || ('#' + modelValue) }}
-            </div>
-            <div class="text-[11px] text-gray-400 dark:text-gray-500 mt-1">ID: {{ modelValue }}</div>
-          </div>
-        </template>
-        <template v-else>
-          <div class="text-gray-400 dark:text-white/60">{{ placeholder }}</div>
-        </template>
-      </div>
+      <SelectionPreviewStrip
+          v-else
+          :selection-id="modelValue"
+          :limit="3"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import SelectionPreviewStrip from "~/components/admin/selections/SelectionPreviewStrip.vue";
+
 type Kind = 'banner' | 'selection'
 import BannerPreviewMini from '~/components/admin/banners/BannerPreviewMini.vue'
 

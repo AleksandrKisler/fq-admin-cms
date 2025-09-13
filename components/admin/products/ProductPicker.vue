@@ -1,6 +1,5 @@
 <template>
   <div class="space-y-4">
-    <!-- Панель действий -->
     <div class="flex flex-col md:flex-row md:items-center gap-3">
       <el-input
           v-model="searchQuery"
@@ -144,6 +143,7 @@ const {$api} = useNuxtApp()
 /** v-model */
 const selectedIds = ref<number[]>(props.modelValue || [])
 watch(() => props.modelValue, v => {
+  console.log(v)
   selectedIds.value = v || []
 })
 watch(selectedIds, v => emit('update:modelValue', v))

@@ -6,14 +6,15 @@
           :show-file-list="false"
           accept="image/*"
           :on-change="onPick"
+          class="object-cover"
       >
         <el-button type="primary">Загрузить обложку</el-button>
       </el-upload>
       <el-button v-if="modelValue" @click="$emit('update:modelValue','')" text type="danger">Очистить</el-button>
     </div>
 
-    <div class="rounded-xl border border-gray-200 overflow-hidden bg-gray-50 h-48 grid place-items-center">
-      <img v-if="modelValue" :src="$fileUrl(modelValue)" class="h-full w-full object-cover" alt="">
+    <div class="rounded-xl border border-gray-200 overflow-hidden bg-gray-50 h-80 grid place-items-center">
+      <img v-if="modelValue" :src="$fileUrl(modelValue)" class="h-full w-full" alt="">
       <div v-else class="text-gray-400">Нет изображения</div>
     </div>
   </div>

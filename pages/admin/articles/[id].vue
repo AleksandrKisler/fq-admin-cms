@@ -12,7 +12,7 @@
 
     <template v-else>
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div class="lg:col-span-8 space-y-6">
+        <div class="lg:col-span-6 space-y-6">
           <AdminFormSection title="Основное">
             <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="grid grid-cols-1 gap-4">
               <el-form-item label="Заголовок" prop="title">
@@ -40,7 +40,7 @@
           </AdminFormSection>
 
           <AdminFormSection title="SEO">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
               <el-form-item label="Meta title">
                 <el-input v-model="form.meta_title"/>
               </el-form-item>
@@ -51,28 +51,14 @@
           </AdminFormSection>
         </div>
 
-        <div class="lg:col-span-4 space-y-6">
+        <div class="lg:col-span-6 space-y-6">
           <AdminFormSection title="Обложка">
             <CoverUpload v-model="form.main_image"/>
           </AdminFormSection>
 
-          <AdminFormSection title="Предпросмотр">
-            <div class="space-y-3">
-              <div class="rounded-xl border overflow-hidden bg-gray-50 aspect-[16/9]">
-                <img v-if="form.main_image" :src="$fileUrl(form.main_image)" class="h-full w-full object-cover">
-              </div>
-              <div class="rounded-xl border bg-white p-4">
-                <div class="text-lg font-semibold">{{ form.title || '—' }}</div>
-                <div class="text-xs text-gray-400">/{{ form.slug || 'slug' }}</div>
-                <p class="text-sm text-gray-600 mt-2" v-if="form.excerpt">{{ form.excerpt }}</p>
-                <el-tag :type="form.is_active ? 'success' : 'info'" class="mt-2">
-                  {{ form.is_active ? 'Опубликована' : 'Черновик' }}
-                </el-tag>
-              </div>
-            </div>
-          </AdminFormSection>
+          <ArticlePreviewModal v-model="previewOpen" :article="form" />
 
-          <AdminFormSection title="Опасная зона">
+          <AdminFormSection title="">
             <div class="flex flex-wrap gap-2">
               <el-popconfirm title="Удалить статью?" @confirm="doDelete">
                 <template #reference>
@@ -86,8 +72,8 @@
       </div>
 
       <AdminStickyActions>
-        <template #meta>Редактирование</template>
-        <el-button @click="cancel">Отмена</el-button>
+        <template #meta>Предпросмотр / Сохранение</template>
+        <el-button @click="previewOpen = true">Предпросмотр</el-button>
         <el-button type="primary" :loading="saving" @click="submit">Сохранить</el-button>
       </AdminStickyActions>
     </template>
@@ -95,6 +81,13 @@
 </template>
 
 <script setup lang="ts">
+import ArticlePreview from "~/components/admin/articles/ArticlePreview.vue";
+const previewOpen = ref(false)
+const preview = reactive({
+  mode: 'card' as 'card' | 'detail',
+  viewport: 'desktop' as 'desktop' | 'mobile'
+})
+
 definePageMeta({layout: 'admin'})
 import type {FormInstance, FormRules} from 'element-plus'
 import AdminPageHeader from '~/components/admin/ui/AdminPageHeader.vue'
@@ -103,6 +96,7 @@ import AdminStickyActions from '~/components/admin/ui/AdminStickyActions.vue'
 import ArticleEditor from '~/components/admin/articles/ArticleEditor.vue'
 import CoverUpload from '~/components/admin/articles/CoverUpload.vue'
 import {isValidSlug} from '~/utils/validators'
+import ArticlePreviewModal from "~/components/admin/articles/ArticlePreviewModal.vue";
 
 const route = useRoute()
 const id = Number(route.params.id)

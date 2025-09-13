@@ -32,7 +32,7 @@
         </AdminFormSection>
 
         <AdminFormSection title="Товары" description="Добавьте 3–12 товаров (поиск работает внутри мультиселекта).">
-          <ProductMultiSelect v-model="form.productIds"/>
+          <ProductPicker v-model="form.productIds" />
         </AdminFormSection>
       </div>
 
@@ -68,6 +68,7 @@ import type {FormInstance, FormRules} from 'element-plus'
 import {isValidSlug} from '~/utils/validators'
 import AdminFormSection from "~/components/admin/ui/AdminFormSection.vue";
 import AdminStickyActions from "~/components/admin/ui/AdminStickyActions.vue";
+import ProductPicker from "~/components/admin/products/ProductPicker.vue";
 
 const {$api} = useNuxtApp()
 
