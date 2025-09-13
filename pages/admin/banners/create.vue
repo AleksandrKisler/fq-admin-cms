@@ -22,14 +22,14 @@
               class="grid grid-cols-1 md:grid-cols-2 gap-4"
           >
             <div class="col-span-1">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Тип</label>
+              <label class="block mb-1 text-[14px] font-medium text-[var(--el-text-color-regular)]">Тип</label>
               <AdminSegmented v-model="form.type" :options="typeOptions"/>
               <p class="mt-1 text-xs text-gray-500">MAIN — герой; INFORMATION — сплит-баннер; остальное — фулл.</p>
             </div>
 
             <div class="col-span-1">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Расположение изображения</label>
-              <AdminSegmented v-model="form.image_position" :options="posOptions"/>
+              <label class="block mb-1 text-[14px] font-medium text-[var(--el-text-color-regular)]">Расположение изображения</label>
+              <AdminSegmented v-model="form.image_position" :options="posOptionsUI"/>
             </div>
 
             <div class="col-span-1 md:col-span-2">
@@ -46,7 +46,7 @@
             </div>
 
             <div class="col-span-1">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Цвет текста</label>
+              <label class="block mb-1 text-[14px] font-medium text-[var(--el-text-color-regular)]">Цвет текста</label>
               <div class="flex items-center gap-3">
                 <el-color-picker v-model="form.text_color"/>
                 <span class="text-xs text-gray-500">Применится к заголовку и описанию в превью</span>
@@ -61,11 +61,11 @@
           </el-form>
         </AdminFormSection>
 
-        <AdminFormSection title="Переход по кнопке" description="Для COLLECTION/PRODUCT кнопка становится активной.">
+        <AdminFormSection title="Переход по кнопке" description="Для коллекции или продукта кнопка становится активной.">
           <el-form :model="form" label-position="top" class="grid grid-cols-1 gap-4">
-            <el-form-item label="Источник (опционально)" prop="source_id">
-              <el-input v-model="form.source_id"
-                        placeholder="Напр.: product:123 · collection:summer · selection:best-sellers"/>
+            <el-form-item label="Ссылка на коллекцию или продукт (опционально)" prop="source">
+              <el-input v-model="form.source"
+                        placeholder="https://foreverqueen.ru/podborki/summer-time"/>
             </el-form-item>
           </el-form>
         </AdminFormSection>
@@ -218,15 +218,10 @@ const uploadKey = ref(0)
 const tempPreviewUrl = ref<string>('')
 
 const typeOptions = [
-  {label: 'MAIN', value: 'MAIN'},
-  {label: 'INFORMATION', value: 'INFORMATION'},
-  {label: 'COLLECTION', value: 'COLLECTION'},
-  {label: 'PRODUCT', value: 'PRODUCT'}
-]
-const posOptions = [
-  {label: 'DEFAULT', value: 'DEFAULT'},
-  {label: 'LEFT', value: 'LEFT'},
-  {label: 'RIGHT', value: 'RIGHT'}
+  {label: 'ХИРО', value: 'MAIN'},
+  {label: 'ИНФОРМАЦИЯ', value: 'INFORMATION'},
+  {label: 'КОЛЛЕКЦИЯ', value: 'COLLECTION'},
+  {label: 'ПРОДУКТ', value: 'PRODUCT'}
 ]
 
 const form = reactive({
@@ -235,7 +230,7 @@ const form = reactive({
   title: '',
   description: '',
   text_color: '#000000',
-  source_id: '',
+  source: '',
   image_url: '',
   is_active: true
 })
@@ -281,12 +276,12 @@ const ratioHint = computed(() => {
 })
 
 const ctaEnabled = computed(() =>
-    ['COLLECTION', 'PRODUCT'].includes(form.type) && !!String(form.source_id || '').trim()
+    ['COLLECTION', 'PRODUCT'].includes(form.type) && !!String(form.source || '').trim()
 )
 const ctaLabel = computed(() => form.type === 'PRODUCT' ? 'К товару' : 'В коллекцию')
 const ctaHref = computed(() => {
   if (!ctaEnabled.value) return '#'
-  const [kind, value] = String(form.source_id).split(':')
+  const [kind, value] = String(form.source).split(':')
   if (!value) return '#'
   switch ((kind || '').toLowerCase()) {
     case 'product':
@@ -363,4 +358,24 @@ const submit = async () => {
   }
 }
 const cancel = () => navigateTo('/admin/banners')
+
+watch(() => form.type, (t) => {
+  if (t !== 'INFORMATION' && form.image_position !== 'DEFAULT') {
+    form.image_position = 'DEFAULT'
+  }
+})
+
+const isInfoType = computed(() => form.type === 'INFORMATION')
+
+const posOptionsUI = computed(() => ([
+  {label: 'ПОЛНОЕ ЗАПОЛНЕНИЕ', value: 'DEFAULT', disabled: false},
+  {label: 'СЛЕВА', value: 'LEFT', disabled: !isInfoType.value},
+  {label: 'СПРАВА', value: 'RIGHT', disabled: !isInfoType.value}
+]))
+
+watch(() => form.image_position, (pos) => {
+  if (!isInfoType.value && pos !== 'DEFAULT') {
+    form.image_position = 'DEFAULT'
+  }
+})
 </script>

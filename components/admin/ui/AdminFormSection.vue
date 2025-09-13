@@ -1,11 +1,13 @@
 <template>
-  <section class="bg-white rounded-2xl shadow border border-gray-100 overflow-hidden">
-    <header v-if="title || description" class="px-6 pt-6">
-      <h2 v-if="title" class="text-base font-medium text-gray-900">{{ title }}</h2>
-      <p v-if="description" class="mt-1 text-sm text-gray-500">{{ description }}</p>
+  <section class="admin-section rounded-2xl border p-5 sm:p-6">
+    <header class="mb-4">
+      <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ title }}</h3>
+      <p v-if="description" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        {{ description }}
+      </p>
     </header>
-    <div class="p-6">
-      <slot />
+    <div>
+      <slot/>
     </div>
   </section>
 </template>

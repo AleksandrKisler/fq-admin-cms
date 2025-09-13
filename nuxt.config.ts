@@ -9,6 +9,7 @@ export default defineNuxtConfig({
     }
   },
   css: [
+    '~/assets/css/theme.css',
     '~/assets/css/tailwind.css',
     'element-plus/dist/index.css',
     'element-plus/theme-chalk/dark/css-vars.css',

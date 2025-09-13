@@ -1,0 +1,177 @@
+/* БАЗОВЫЕ ТОКЕНЫ ДЛЯ ОБЕИХ ТЕМ */
+:root {
+    /* светлая */
+    --c-bg:            #ffffff;
+    --c-card:          #ffffff;
+    --c-text:          #111827; /* gray-900 */
+    --c-text-2:        #6b7280; /* gray-500 */
+    --c-border:        #e5e7eb; /* gray-200 */
+    --c-muted:         #f9fafb; /* gray-50 */
+    --c-hover:         #f3f4f6; /* gray-100 */
+    --c-primary:       #6366f1; /* indigo-500 */
+    --c-primary-weak:  #eef2ff; /* indigo-50 */
+
+    /* Element Plus variables (светлая) */
+    --el-bg-color:                    var(--c-bg);
+    --el-bg-color-overlay:            var(--c-card);
+    --el-text-color-primary:          var(--c-text);
+    --el-text-color-regular:          var(--c-text-2);
+    --el-text-color-secondary:        #9ca3af;
+    --el-border-color:                var(--c-border);
+    --el-border-color-light:          #f3f4f6;
+    --el-fill-color-blank:            var(--c-card);
+    --el-fill-color:                   var(--c-muted);
+    --el-input-bg-color:              var(--c-card);
+    --el-input-text-color:            var(--c-text);
+    --el-input-placeholder-color:     #9ca3af;
+    --el-color-primary:               var(--c-primary);
+    --el-color-primary-light-9:       var(--c-primary-weak);
+
+    --el-card-border-color:           var(--c-border);
+    --el-card-bg-color:               var(--c-card);
+
+    --el-table-header-bg-color:       var(--c-muted);
+    --el-table-row-hover-bg-color:    var(--c-hover);
+
+    --el-dialog-bg-color:             var(--c-card);
+    --el-overlay-color-lighter:       rgba(17,24,39,.6);
+}
+
+/* ТЁМНАЯ ТЕМА: просто переопределяем токены */
+:root.dark {
+    --c-bg:           #0f1217;  /* почти black, но не грязный */
+    --c-card:         #11161d;  /* neutral-900 с синевинкой */
+    --c-text:         #e5e7eb;  /* gray-200 */
+    --c-text-2:       #94a3b8;  /* slate-400 */
+    --c-border:       #1f2937;  /* gray-800 */
+    --c-muted:        #0b0f14;  /* чуть темнее bg */
+    --c-hover:        #18202a;  /* подсветка строк/кнопок */
+    --c-primary:      #8b9dff;  /* индиго посветлее */
+    --c-primary-weak: rgba(139,157,255,.12);
+
+    --el-bg-color:                 var(--c-bg);
+    --el-bg-color-overlay:         var(--c-card);
+    --el-text-color-primary:       var(--c-text);
+    --el-text-color-regular:       var(--c-text-2);
+    --el-text-color-secondary:     #64748b;
+
+    --el-border-color:             var(--c-border);
+    --el-border-color-light:       #223043;
+
+    --el-fill-color-blank:         var(--c-card);
+    --el-fill-color:               #0f151d;
+
+    --el-input-bg-color:           #0f151d;
+    --el-input-text-color:         var(--c-text);
+    --el-input-placeholder-color:  #7f8ea3;
+
+    --el-color-primary:            var(--c-primary);
+    --el-color-primary-light-9:    var(--c-primary-weak);
+
+    --el-card-border-color:        var(--c-border);
+    --el-card-bg-color:            var(--c-card);
+
+    --el-table-header-bg-color:    #0f151d;
+    --el-table-row-hover-bg-color: #16202c;
+
+    --el-dialog-bg-color:          var(--c-card);
+    --el-overlay-color-lighter:    rgba(0,0,0,.55);
+}
+
+/* --- МЕЛКИЕ ПАТЧИ ДЛЯ КОНТРОЛОВ --- */
+
+/* Карточки/секции */
+.el-card,
+.admin-section,
+.admin-card {
+    background-color: var(--el-card-bg-color) !important;
+    border-color: var(--el-card-border-color) !important;
+}
+
+/* FormItem label в тёмной теме чуть светлей */
+.el-form-item__label {
+    color: var(--el-text-color-regular);
+}
+
+/* Inputs / Selects / Textarea */
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner {
+    background-color: var(--el-input-bg-color) !important;
+    color: var(--el-input-text-color) !important;
+    border-color: var(--el-border-color) !important;
+}
+.el-input__inner::placeholder,
+.el-textarea__inner::placeholder {
+    color: var(--el-input-placeholder-color) !important;
+}
+
+/* Upload drag box */
+.el-upload-dragger {
+    background: var(--el-fill-color) !important;
+    border-color: var(--el-border-color) !important;
+    color: var(--el-text-color-regular) !important;
+}
+.el-upload-dragger:hover {
+    background: var(--c-hover) !important;
+}
+
+/* Table */
+.el-table {
+    --el-table-bg-color: var(--el-card-bg-color);
+    --el-table-tr-bg-color: var(--el-card-bg-color);
+    --el-table-border-color: var(--el-border-color);
+    --el-table-text-color: var(--el-text-color-primary);
+}
+.el-table th.el-table__cell {
+    background: var(--el-table-header-bg-color) !important;
+    color: var(--el-text-color-primary) !important;
+}
+
+/* Dialog / Popconfirm */
+.el-dialog,
+.el-popconfirm {
+    background: var(--el-dialog-bg-color) !important;
+    color: var(--el-text-color-primary) !important;
+    border: 1px solid var(--el-border-color);
+}
+
+/* Buttons: делаем primary читабельным в обеих темах */
+.el-button--primary {
+    color: #fff !important;
+}
+.el-button.is-plain.el-button--primary {
+    background-color: var(--el-color-primary-light-9) !important;
+    color: var(--el-color-primary) !important;
+    border-color: var(--el-color-primary) !important;
+}
+
+/* Segmented (твой кастом) — немного контраста в dark */
+.admin-segmented {
+    background: var(--el-fill-color) !important;
+    border-color: var(--el-border-color) !important;
+}
+.admin-segmented .item {
+    color: var(--el-text-color-regular);
+}
+.admin-segmented .item.is-active {
+    background: var(--el-color-primary) !important;
+    color: #fff !important;
+}
+
+/* Маленькие карточки/превью */
+.preview-card {
+    background: var(--el-card-bg-color);
+    border-color: var(--el-border-color);
+}
+
+/* плейсхолдеры на превью */
+.preview-placeholder {
+    color: var(--el-text-color-regular);
+    border-color: var(--el-border-color);
+}
+
+/* Хлебные крошки/тонкий текст */
+.text-secondary {
+    color: var(--el-text-color-regular);
+}

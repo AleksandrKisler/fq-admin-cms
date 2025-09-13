@@ -4,7 +4,7 @@
                      subtitle="Редактирование баннера, изображения и кнопки перехода.">
       <template #actions>
         <NuxtLink to="/admin/banners">
-          <el-button>Список</el-button>
+          <el-button>перейти к списку баннеров</el-button>
         </NuxtLink>
       </template>
     </AdminPageHeader>
@@ -22,14 +22,14 @@
               class="grid grid-cols-1 md:grid-cols-2 gap-4"
           >
             <div class="col-span-1">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Тип</label>
+              <label class="block mb-1 text-[14px] font-medium text-[var(--el-text-color-regular)]">Тип</label>
               <AdminSegmented v-model="form.type" :options="typeOptions"/>
               <p class="mt-1 text-xs text-gray-500">MAIN — герой; INFORMATION — сплит; остальное — фулл 16:9.</p>
             </div>
 
             <div class="col-span-1">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Расположение изображения</label>
-              <AdminSegmented v-model="form.image_position" :options="posOptions"/>
+              <label class="block mb-1 text-[14px] font-medium text-[var(--el-text-color-regular)]">Расположение изображения</label>
+              <AdminSegmented v-model="form.image_position" :options="posOptionsUI"/>
             </div>
 
             <div class="col-span-1 md:col-span-2">
@@ -46,7 +46,7 @@
             </div>
 
             <div class="col-span-1">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Цвет текста</label>
+              <label class="block mb-1 text-[14px] font-medium text-[var(--el-text-color-regular)]">Цвет текста</label>
               <div class="flex items-center gap-3">
                 <el-color-picker v-model="form.text_color"/>
                 <span class="text-xs text-gray-500">Применится к заголовку и описанию в превью</span>
@@ -61,12 +61,12 @@
           </el-form>
         </AdminFormSection>
 
-        <AdminFormSection title="Переход по кнопке" description="Для COLLECTION/PRODUCT кнопка становится активной.">
+        <AdminFormSection title="Переход по кнопке" description="Для коллекции или продукта кнопка становится активной">
           <el-skeleton v-if="pending" :rows="2" animated/>
           <el-form v-else :model="form" label-position="top" class="grid grid-cols-1 gap-4">
-            <el-form-item label="Источник (опционально)" prop="source_id">
-              <el-input v-model="form.source_id"
-                        placeholder="Напр.: product:123 · collection:summer · selection:best-sellers"/>
+            <el-form-item label="Ссылка на коллекцию или продукт (опционально)" prop="source">
+              <el-input v-model="form.source"
+                        placeholder="https://foreverqueen.ru/podborki/summer-time"/>
             </el-form-item>
           </el-form>
         </AdminFormSection>
@@ -98,7 +98,6 @@
           </div>
         </AdminFormSection>
       </div>
-
       <div class="lg:col-span-5">
         <AdminFormSection title="Предпросмотр" description="Пустые слоты заменяются плейсхолдерами.">
           <div v-if="isMain" class="relative rounded-2xl overflow-hidden border bg-gray-50 w-full"
@@ -218,7 +217,7 @@ import AdminSegmented from '~/components/admin/ui/AdminSegmented.vue'
 import {isValidImageUrl} from '~/utils/validators'
 import {renderItalicsToHtml} from '~/utils/markup'
 
-const {$api, $fileUrl} = useNuxtApp()
+const {$api, $fileSSRUrl} = useNuxtApp()
 const route = useRoute()
 
 const formRef = ref<FormInstance>()
@@ -230,15 +229,10 @@ const tempPreviewUrl = ref<string>('')
 const meta = reactive<{ created_at?: string, updated_at?: string }>({})
 
 const typeOptions = [
-  {label: 'MAIN', value: 'MAIN'},
-  {label: 'INFORMATION', value: 'INFORMATION'},
-  {label: 'COLLECTION', value: 'COLLECTION'},
-  {label: 'PRODUCT', value: 'PRODUCT'}
-]
-const posOptions = [
-  {label: 'DEFAULT', value: 'DEFAULT'},
-  {label: 'LEFT', value: 'LEFT'},
-  {label: 'RIGHT', value: 'RIGHT'}
+  {label: 'ХИРО', value: 'MAIN'},
+  {label: 'ИНФОРМАЦИЯ', value: 'INFORMATION'},
+  {label: 'КОЛЛЕКЦИЯ', value: 'COLLECTION'},
+  {label: 'ПРОДУКТ', value: 'PRODUCT'}
 ]
 
 const form = reactive({
@@ -248,7 +242,7 @@ const form = reactive({
   title: '',
   description: '',
   text_color: '#000000',
-  source_id: '',
+  source: '',
   image_url: '',
   is_active: true
 })
@@ -277,7 +271,7 @@ const {pending} = await useAsyncData('banner-one', async () => {
   form.title = b.title || ''
   form.description = b.description || ''
   form.text_color = b.text_color || form.text_color
-  form.source_id = b.source_id || ''
+  form.source = b.source || ''
   form.image_url = b.image_url || ''
   form.is_active = !!b.is_active
   meta.created_at = b.created_at
@@ -285,7 +279,15 @@ const {pending} = await useAsyncData('banner-one', async () => {
   return b
 })
 
-const previewUrl = computed(() => tempPreviewUrl.value || $fileUrl(form.image_url) || '')
+const fallbackFileUrl = (p) => {
+  if (!p) return ''
+  if (/^https?:\/\//i.test(p)) return p
+  let path = p.startsWith('/') ? p : `/${p}`
+  if (!/^\/images\//i.test(path)) path = `/images${path}`
+  return `http://localhost:3001${path}`
+}
+
+const previewUrl = computed(() => tempPreviewUrl.value || ($fileSSRUrl ? $fileSSRUrl(form.image_url) : fallbackFileUrl(form.image_url)))
 const isMain = computed(() => form.type === 'MAIN')
 const isSplit = computed(() => form.type === 'INFORMATION' && ['LEFT', 'RIGHT'].includes(form.image_position))
 const imgFirst = computed(() => form.image_position === 'LEFT')
@@ -314,12 +316,12 @@ const titleHtml = computed(() => renderItalicsToHtml(form.title))
 const descHtml = computed(() => renderItalicsToHtml(form.description))
 
 const ctaEnabled = computed(() =>
-    ['COLLECTION', 'PRODUCT'].includes(form.type) && !!String(form.source_id || '').trim()
+    ['COLLECTION', 'PRODUCT'].includes(form.type) && !!String(form.source || '').trim()
 )
 const ctaLabel = computed(() => form.type === 'PRODUCT' ? 'К товару' : 'В коллекцию')
 const ctaHref = computed(() => {
   if (!ctaEnabled.value) return '#'
-  const [kind, value] = String(form.source_id).split(':')
+  const [kind, value] = String(form.source).split(':')
   if (!value) return '#'
   switch ((kind || '').toLowerCase()) {
     case 'product':
@@ -412,4 +414,24 @@ const fmt = (v?: string) => v
       minute: '2-digit'
     }).format(new Date(v))
     : '—'
+
+watch(() => form.type, (t) => {
+  if (t !== 'INFORMATION' && form.image_position !== 'DEFAULT') {
+    form.image_position = 'DEFAULT'
+  }
+})
+
+const isInfoType = computed(() => form.type === 'INFORMATION')
+
+const posOptionsUI = computed(() => ([
+  {label: 'ПОЛНОЕ ЗАПОЛНЕНИЕ', value: 'DEFAULT', disabled: false},
+  {label: 'СЛЕВА', value: 'LEFT', disabled: !isInfoType.value},
+  {label: 'СПРАВА', value: 'RIGHT', disabled: !isInfoType.value}
+]))
+
+watch(() => form.image_position, (pos) => {
+  if (!isInfoType.value && pos !== 'DEFAULT') {
+    form.image_position = 'DEFAULT'
+  }
+})
 </script>
