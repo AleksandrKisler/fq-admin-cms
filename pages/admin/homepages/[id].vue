@@ -313,7 +313,6 @@ const loadPage = async () => {
     // ожидаем, что API возвращает { homepage } или { data }
     const r:any = await $api(`/homepages/${idOrSlug.value}`)
     const hp = r.homepage || r.page || r
-    console.info(hp.banners['slot-1'])
 
     page.value = hp
     form.title = hp.title

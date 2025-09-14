@@ -1,291 +1,263 @@
 <template>
   <div class="space-y-4">
-    <div class="flex flex-col md:flex-row md:items-center gap-3">
-      <el-input
-          v-model="searchQuery"
-          placeholder="Поиск по названию или SKU…"
-          clearable
-          class="md:flex-1"
-          :prefix-icon="Search"
-      />
-
-      <el-select
-          v-model="selectedCategory"
-          clearable
-          filterable
-          placeholder="Категория"
-          class="w-full md:w-72"
-          :loading="loading.categories"
-      >
-        <el-option
-            v-for="c in categories"
-            :key="c.value"
-            :label="c.label"
-            :value="c.value"
+    <!-- Панель управления -->
+    <div class="flex flex-col md:flex-row md:items-end gap-3">
+      <div class="flex-1">
+        <label class="el-form-item__label block mb-1">Категория</label>
+        <el-cascader
+            v-model="selectedCategory"
+            :options="categoryOptions"
+            :props="{ value:'id', label:'title', children:'children', emitPath:false }"
+            clearable
+            filterable
+            class="w-full"
+            placeholder="Все категории"
+            @change="reload"
         />
-      </el-select>
+      </div>
 
-      <el-pagination
-          background
-          layout="prev, pager, next"
-          :total="total"
-          :page-size="pageSize"
-          :current-page="page"
-          @current-change="onPage"
-          class="ml-auto"
-      />
+      <div class="flex-1">
+        <label class="el-form-item__label block mb-1">Поиск по названию / SKU</label>
+        <el-input
+            v-model="searchQuery"
+            placeholder="Например: кеды, 679566…"
+            clearable
+            @input="debouncedLocalFilter"
+        >
+          <template #prefix>
+            <el-icon><Search/></el-icon>
+          </template>
+        </el-input>
+      </div>
+
+      <div class="shrink-0 flex items-center gap-3">
+        <el-checkbox v-model="onlyInStock" @change="reload">Только в наличии</el-checkbox>
+        <el-button :loading="loading" @click="reload">
+          <el-icon class="mr-1"><Refresh/></el-icon>Обновить
+        </el-button>
+      </div>
     </div>
 
-    <!-- Сетка карточек -->
-    <el-skeleton v-if="loading.products" :rows="6" animated/>
-
-    <template v-else>
-      <div v-if="items.length" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        <div
-            v-for="p in items"
-            :key="p.id"
-            class="group relative rounded-xl border border-gray-200 hover:border-indigo-300 bg-white overflow-hidden transition"
-            @click="toggle(p)"
-        >
-          <!-- плавающая круглая кнопка -->
-          <div class="absolute top-2 right-2 z-10">
-            <el-tooltip :content="isSelected(p.id) ? 'Убрать из выбора' : 'Добавить в выбор'" placement="top">
-              <el-button
-                  circle
-                  :type="isSelected(p.id) ? 'danger' : 'primary'"
-                  size="small"
-                  class="!p-0 h-7 w-7 shadow-sm"
-                  @click.stop="toggle(p)"
-              >
-                <el-icon :size="14">
-                  <Check v-if="isSelected(p.id)" />
-                  <Plus v-else />
-                </el-icon>
-                <span class="sr-only">{{ isSelected(p.id) ? 'Убрать' : 'Выбрать' }}</span>
-              </el-button>
-            </el-tooltip>
+    <!-- Список карточек -->
+    <el-skeleton v-if="loading && !items.length" :rows="6" animated />
+    <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div
+          v-for="p in filteredItems"
+          :key="p.id"
+          class="group rounded-xl border border-gray-100 dark:border-white/10 overflow-hidden bg-white dark:bg-neutral-900 shadow-sm hover:shadow transition"
+      >
+        <div class="aspect-[4/5] bg-gray-50 dark:bg-white/5 relative">
+          <img
+              v-if="firstImage(p)"
+              :src="firstImage(p)"
+              class="absolute inset-0 w-full h-full object-cover"
+              :alt="p.title"
+          />
+          <div v-else class="absolute inset-0 grid place-items-center text-gray-400 text-xs">
+            Нет фото
           </div>
 
-          <!-- изображение -->
-          <div class="aspect-[4/3] bg-gray-50">
-            <img
-                v-if="p.image"
-                :src="$fileUrl(p.image)"
-                :alt="p.title"
-                class="h-full w-full object-cover"
-                loading="lazy"
-            />
-            <div v-else class="h-full w-full grid place-items-center text-gray-300">
-              <el-icon><Picture /></el-icon>
-            </div>
-          </div>
+          <button
+              class="absolute top-2 right-2 h-8 w-8 rounded-full grid place-items-center bg-white/90 dark:bg-black/60 border border-gray-200 dark:border-white/10"
+              @click.stop="toggle(p)"
+              :title="isSelected(p.id) ? 'Убрать' : 'Выбрать'"
+          >
+            <el-icon v-if="isSelected(p.id)" class="text-emerald-600"><Check/></el-icon>
+            <el-icon v-else class="text-gray-600 dark:text-gray-300"><Plus/></el-icon>
+          </button>
+        </div>
 
-          <!-- контент -->
-          <div class="p-3 space-y-1">
-            <div class="text-sm font-medium text-gray-900 truncate" :title="p.title">{{ p.title }}</div>
-            <div class="text-xs text-gray-500 truncate">
-              <span v-if="p.sku">{{ p.sku }}</span>
-              <span v-if="p.category" class="ml-1 text-gray-400">• {{ p.category }}</span>
+        <div class="p-3 space-y-1">
+          <div class="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">{{ p.title }}</div>
+          <div class="text-[12px] text-gray-400">SKU: {{ p.sku ?? '—' }}</div>
+          <div class="flex items-baseline gap-2">
+            <div class="text-sm font-semibold text-gray-900 dark:text-white">
+              {{ p.price?.current != null ? formatRub(p.price.current) : '—' }}
             </div>
-
-            <!-- очень компактный футер с ценой -->
-            <div class="pt-1">
-              <div class="text-sm font-semibold">
-                <span v-if="p.price?.current != null">₽{{ p.price.current.toLocaleString('ru-RU') }}</span>
-                <span v-else-if="typeof p.price === 'number'">₽{{ p.price.toLocaleString('ru-RU') }}</span>
-                <span v-else class="text-gray-400">—</span>
-              </div>
+            <div v-if="p.price?.old" class="text-xs line-through text-gray-400">
+              {{ formatRub(p.price.old) }}
             </div>
           </div>
         </div>
       </div>
+    </div>
 
-      <el-empty v-else description="Ничего не найдено"/>
-    </template>
+    <!-- Пагинация / ещё -->
+    <div class="flex items-center justify-between mt-2">
+      <div class="text-xs text-gray-500">
+        Показано {{ items.length }} из {{ total }}
+      </div>
+      <el-button
+          v-if="items.length < total"
+          :loading="loadingMore"
+          @click="loadMore"
+      >
+        Показать ещё
+      </el-button>
+    </div>
 
-    <div v-if="selectedList.length" class="rounded-xl border bg-white p-3">
-      <div class="text-sm font-medium mb-2">Выбрано: {{ selectedList.length }}</div>
+    <!-- Выбранные товары -->
+    <div v-if="selectedDetailed.length" class="mt-6">
+      <div class="el-form-item__label mb-2">Выбранные товары ({{ modelValue.length }})</div>
       <div class="flex flex-wrap gap-2">
-        <el-tag
-            v-for="p in selectedList"
-            :key="p.id"
-            closable
-            @close="remove(p.id)"
+        <div
+            v-for="p in selectedDetailed"
+            :key="'sel-'+p.id"
+            class="flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-500/15 border border-indigo-200 dark:border-indigo-500/30"
         >
-          {{ p.title || p.sku || ('#' + p.id) }}
-        </el-tag>
+          <img
+              v-if="firstImage(p)"
+              :src="firstImage(p)"
+              class="h-6 w-6 rounded object-cover"
+              :alt="p.title"
+          />
+          <span class="text-sm text-indigo-800 dark:text-indigo-200 truncate max-w-[200px]">{{ p.title }}</span>
+          <button
+              class="h-6 w-6 grid place-items-center rounded-full hover:bg-indigo-100 dark:hover:bg-white/10"
+              @click="remove(p.id)"
+              title="Убрать"
+          >
+            <el-icon>
+              <Close/>
+            </el-icon>
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
-<script setup lang="ts">
-import {Search, Picture} from '@element-plus/icons-vue'
-import { Plus, Check } from '@element-plus/icons-vue'
+<script setup>
+import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { Search, Refresh, Plus, Check, Close } from '@element-plus/icons-vue'
+import { useDebounceFn } from '@vueuse/core'
 
-type ProductLite = {
-  id: number
-  title: string
-  sku?: string
-  slug?: string
-  price?: number | { current: number; old?: number | null }
-  image?: string | null
-  category?: string
-}
-
-const props = defineProps<{
-  modelValue: number[] | null
-}>()
-const emit = defineEmits<{ (e: 'update:modelValue', v: number[]): void }>()
-
-const {$api} = useNuxtApp()
-
-/** v-model */
-const selectedIds = ref<number[]>(props.modelValue || [])
-watch(() => props.modelValue, v => {
-  console.log(v)
-  selectedIds.value = v || []
+const props = defineProps({
+  modelValue: { type: Array, default: () => [] }, // [ids]
 })
-watch(selectedIds, v => emit('update:modelValue', v))
+const emit = defineEmits(['update:modelValue'])
 
-/** локальное хранилище метаданных выбранных карточек (чтобы показывать чипы с названиями) */
-const selectedMeta = reactive<Map<number, ProductLite>>(new Map())
-const selectedList = computed(() => [...selectedMeta.values()].filter(p => selectedIds.value.includes(p.id)))
+const { $api, $fileUrl } = useNuxtApp()
 
-/** фильтры/поиск/страницы */
-const searchQuery = ref('')
-const selectedCategory = ref<number | string | null>(null)
-const page = ref(1)
-const pageSize = 24
-
-/** данные */
-const categories = ref<{ label: string; value: number | string }[]>([])
-const items = ref<ProductLite[]>([])
+/* ---- состояние ---- */
+const loading = ref(true)
+const loadingMore = ref(false)
 const total = ref(0)
+const limit = ref(24)
+const offset = ref(0)
 
-/** загрузки */
-const loading = reactive({categories: false, products: false})
+const items = ref([])               // страница каталога
+const selectedDetailed = ref([])    // детальные данные для выбранных
+const selectedCategory = ref(null)  // id категории
+const categoryOptions = ref([])     // каскадер
+const searchQuery = ref('')
+const onlyInStock = ref(false)
 
-const isSelected = (id: number) => selectedIds.value.includes(id)
-const ensureMeta = (p: ProductLite) => {
-  selectedMeta.set(p.id, p)
-}
-const toggle = (p: ProductLite) => {
-  const idx = selectedIds.value.indexOf(p.id)
-  if (idx >= 0) {
-    selectedIds.value.splice(idx, 1)
-  } else {
-    selectedIds.value.push(p.id)
-    ensureMeta(p)
-  }
-}
-const remove = (id: number) => {
-  const i = selectedIds.value.indexOf(id)
-  if (i >= 0) selectedIds.value.splice(i, 1)
+/* ---- утилиты ---- */
+const formatRub = (n) =>
+    new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(Number(n || 0))
+
+const firstImage = (p) => {
+  const url = Array.isArray(p.images) && p.images.length ? p.images[0] : ''
+  return url ? $fileUrl(url) : ''
 }
 
-const normalizeProduct = (raw: any): ProductLite => {
-  const price =
-      raw?.price && typeof raw.price === 'object'
-          ? {current: Number(raw.price.current ?? raw.price), old: raw.price.old ?? null}
-          : (raw?.price != null ? Number(raw.price) : undefined)
-
-  const image =
-      raw?.main_image || raw?.image_url || raw?.image || raw?.images?.[0]?.file_url || raw?.images?.[0] || null
-
-  if (image) console.info(image)
-  console.info(raw)
-  const categoryTitle = raw?.category?.title || raw?.category_title || undefined
-
-  return {
-    id: Number(raw.id),
-    title: String(raw.title ?? raw.name ?? raw.sku ?? raw.slug ?? raw.id),
-    sku: raw.sku ?? undefined,
-    slug: raw.slug ?? undefined,
-    price,
-    image,
-    category: categoryTitle
-  }
+const isSelected = (id) => props.modelValue?.includes(id)
+const toggle = (p) => {
+  const set = new Set(props.modelValue || [])
+  if (set.has(p.id)) set.delete(p.id); else set.add(p.id)
+  emit('update:modelValue', Array.from(set))
+}
+const remove = (id) => {
+  emit('update:modelValue', (props.modelValue || []).filter(v => v !== id))
 }
 
-const fetchCategories = async () => {
-  loading.categories = true
+/* ---- загрузка категорий ---- */
+const loadCatalog = async () => {
   try {
-    const r: any = await $api('/products/catalog').catch(() => null)
-    let list: any[] = []
-    if (r?.catalog) list = r.catalog
-    else {
-      const rc: any = await $api('/categories').catch(() => null)
-      list = rc?.data || rc || []
-    }
-    const flat: { label: string; value: number | string }[] = []
-    const walk = (node: any) => {
-      flat.push({label: node.title || node.name || node.slug || String(node.id), value: node.id ?? node.slug})
-      ;(node.children || []).forEach((ch: any) => walk(ch))
-    }
-    list.forEach(walk)
-    categories.value = flat
-  } finally {
-    loading.categories = false
+    const r = await $api('/products/catalog')
+    // r.catalog: [{ id, title, slug, children:[...] }]
+    categoryOptions.value = (r?.catalog || []).map(root => ({
+      id: root.id,
+      title: root.title,
+      children: (root.children || []).map(ch => ({ id: ch.id, title: ch.title })),
+    }))
+  } catch (e) {
+    categoryOptions.value = []
   }
 }
 
-const doFetchProducts = async () => {
-  loading.products = true
+/* ---- загрузка товаров под фильтры ---- */
+const fetchProductsPage = async (append = false) => {
+  const body = {
+    source: selectedCategory.value || null,
+    sourceType: 'CATEGORY',
+    filters: [
+      ...(onlyInStock.value ? [{ type: 'STOCK', data: {} }] : []),
+    ],
+    sort: 'created_at',
+    direction: 'DESC',
+    limit: limit.value,
+    offset: offset.value,
+  }
   try {
-    const offset = (page.value - 1) * pageSize
-    const body = {
-      source: selectedCategory.value || null,
-      sourceType: 'CATEGORY', // как в твоём контроллере
-      filters: [],
-      sort: 'createdAt',
-      direction: 'DESC',
-      limit: pageSize,
-      offset
-    } as any
-
-    if (searchQuery.value.trim()) body.q = searchQuery.value.trim()
-
-    let res: any = await $api('/products', {method: 'POST', body}).catch(() => null)
-
-    if (!res) {
-      res = await $api('/products', {
-        query: {
-          q: searchQuery.value || undefined,
-          category: selectedCategory.value || undefined,
-          limit: pageSize,
-          offset
-        }
-      }).catch(() => null)
-    }
-
-    if (!res) {
-      res = await $api('/products/search', {
-        method: 'POST',
-        body: {q: searchQuery.value || '', category: selectedCategory.value || null, limit: pageSize, offset}
-      }).catch(() => null)
-    }
-
-    const rows = res?.data || res?.rows || res?.products || res?.items || []
-    items.value = rows.map(normalizeProduct)
-    total.value = Number(res?.total ?? res?.count ?? rows.length)
-    // сохраняем метаданные выбранных
-    for (const p of items.value) if (isSelected(p.id)) ensureMeta(p)
+    if (!append) { loading.value = true } else { loadingMore.value = true }
+    const r = await $api('/products', { method: 'POST', body })
+    const page = r?.data || r?.items || []
+    total.value = r?.total ?? page.length
+    items.value = append ? items.value.concat(page) : page
   } finally {
-    loading.products = false
+    loading.value = false
+    loadingMore.value = false
   }
 }
 
-const debouncedFetch = () => {
-  page.value = 1
-  doFetchProducts()
+const reload = async () => {
+  offset.value = 0
+  await fetchProductsPage(false)
+}
+const loadMore = async () => {
+  if (items.value.length >= total.value) return
+  offset.value += limit.value
+  await fetchProductsPage(true)
 }
 
-watch([searchQuery, selectedCategory], () => debouncedFetch())
-watch(page, () => doFetchProducts())
+/* ---- локальный поиск по текущей странице (т.к. бэкенд текста не поддерживает) ---- */
+const filteredItems = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return items.value
+  return items.value.filter(p =>
+      String(p.title || '').toLowerCase().includes(q) ||
+      String(p.sku || '').toLowerCase().includes(q)
+  )
+})
+const debouncedLocalFilter = useDebounceFn(() => {
+}, 200)
+
+const hydrateSelected = async () => {
+  const ids = Array.isArray(props.modelValue) ? props.modelValue : []
+  if (!ids.length) { selectedDetailed.value = []; return }
+  try {
+    const r = await $api('/products/by-ids', { method: 'POST', body: { ids } })
+    selectedDetailed.value = r?.data || []
+  } catch {
+    selectedDetailed.value = []
+  }
+}
+
+watch(() => props.modelValue, hydrateSelected, { immediate: true })
+watch([selectedCategory, onlyInStock], reload)
 
 onMounted(async () => {
-  await fetchCategories()
-  await doFetchProducts()
+  await loadCatalog()
+  await reload()
 })
 </script>
+
+<style scoped>
+/* Чуть более контрастная тень в тёмной теме */
+:deep(.el-cascader .el-input__wrapper),
+:deep(.el-input__wrapper) {
+  transition: box-shadow .15s ease;
+}
+</style>

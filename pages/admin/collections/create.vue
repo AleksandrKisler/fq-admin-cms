@@ -1,57 +1,61 @@
 <template>
   <div class="space-y-6">
-    <AdminPageHeader title="Новая коллекция" subtitle="Заполните основную информацию и добавьте товары.">
+    <AdminPageHeader
+        title="Новая коллекция"
+        subtitle="Заполните данные, загрузите обложку и добавьте товары."
+    >
       <template #actions>
         <NuxtLink to="/admin/collections">
           <el-button>Назад</el-button>
         </NuxtLink>
       </template>
     </AdminPageHeader>
-
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <div class="lg:col-span-7 space-y-6">
+      <div class="lg:col-span-12 space-y-6">
         <AdminFormSection title="Основное">
-          <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="grid grid-cols-1 gap-4">
+          <el-form
+              ref="formRef"
+              :model="form"
+              :rules="rules"
+              label-position="top"
+              class="grid grid-cols-1 gap-4"
+          >
             <el-form-item label="Название" prop="title">
-              <el-input v-model="form.title" @input="autoSlug"/>
+              <el-input v-model="form.title" placeholder="Например: Летняя распродажа" />
             </el-form-item>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <el-form-item label="Slug" prop="slug">
-                <el-input v-model="form.slug" placeholder="novinki-nedeli"/>
-              </el-form-item>
-              <el-form-item label="Активна">
-                <el-switch v-model="form.is_active"/>
-              </el-form-item>
-            </div>
+
             <el-form-item label="Описание" prop="description">
-              <el-input v-model="form.description" type="textarea" :rows="3"/>
+              <el-input v-model="form.description" type="textarea" :rows="3"
+                        placeholder="Короткое описание коллекции…" />
             </el-form-item>
           </el-form>
         </AdminFormSection>
-
-        <AdminFormSection title="Товары" description="Выберите товары, которые войдут в коллекцию.">
+        <AdminFormSection title="Публикация и обложка">
+          <PublishCard
+              v-model:is-active="form.is_active"
+              v-model:preview-image="form.preview_image"
+          />
+        </AdminFormSection>
+        <AdminFormSection
+            title="Товары"
+            description="Выберите товары, которые войдут в коллекцию (можно фильтровать и искать)."
+        >
           <ProductPicker v-model="form.productIds" />
         </AdminFormSection>
       </div>
-
-      <div class="lg:col-span-5 space-y-6">
-        <AdminFormSection title="Предпросмотр">
-          <div class="rounded-xl border bg-white p-4 space-y-2">
-            <div class="text-lg font-medium">{{ form.title || 'Новая коллекция' }}</div>
-            <div class="text-xs text-gray-400">/{{ form.slug || 'slug' }}</div>
-            <p class="text-sm text-gray-600 mt-2">{{ form.description || 'Описание коллекции…' }}</p>
-            <div class="mt-3 text-xs text-gray-500">Выбрано товаров: {{ form.productIds.length }}</div>
-            <el-tag :type="form.is_active?'success':'info'" class="mt-2">{{
-                form.is_active ? 'Активна' : 'Черновик'
-              }}
-            </el-tag>
-          </div>
-        </AdminFormSection>
-      </div>
+      <CollectionPreviewModal
+          v-model="previewOpen"
+          :title="form.title"
+          :description="form.description"
+          :preview-image="form.preview_image"
+          :temp-preview-url="tempPreviewUrl"
+          :products="previewProducts"
+      />
     </div>
 
     <AdminStickyActions>
       <template #meta>Создание коллекции</template>
+      <el-button @click="openPreview">Предпросмотр</el-button>
       <el-button @click="cancel">Отмена</el-button>
       <el-button type="primary" :loading="saving" @click="submit">Сохранить</el-button>
     </AdminStickyActions>
@@ -59,50 +63,53 @@
 </template>
 
 <script setup lang="ts">
-import AdminPageHeader from "~/components/admin/ui/AdminPageHeader.vue";
+import type { FormInstance, FormRules } from 'element-plus'
+import AdminPageHeader from '~/components/admin/ui/AdminPageHeader.vue'
+import AdminFormSection from '~/components/admin/ui/AdminFormSection.vue'
+import AdminStickyActions from '~/components/admin/ui/AdminStickyActions.vue'
+import ProductPicker from '~/components/admin/products/ProductPicker.vue'
+import PublishCard from "~/components/admin/collections/PublishCard.vue";
+import CollectionPreviewModal from "~/components/admin/collections/CollectionPreviewModal.vue";
 
-definePageMeta({layout: 'admin'})
-import type {FormInstance, FormRules} from 'element-plus'
-import {isValidSlug} from '~/utils/validators'
-import AdminFormSection from "~/components/admin/ui/AdminFormSection.vue";
-import AdminStickyActions from "~/components/admin/ui/AdminStickyActions.vue";
-import ProductPicker from "~/components/admin/products/ProductPicker.vue";
+definePageMeta({ layout: 'admin' })
+const { $api, $fileUrl } = useNuxtApp()
 
-const {$api} = useNuxtApp()
 const formRef = ref<FormInstance>()
 const saving = ref(false)
+const previewOpen = ref(false)
 
 const form = reactive({
   title: '',
-  slug: '',
   description: '',
   is_active: true,
+  preview_image: '' as string,     // <= новое поле
   productIds: [] as number[]
 })
 
 const rules: FormRules = {
-  title: [{required: true, message: 'Название обязательно', trigger: 'blur'}],
-  slug: [
-    {required: true, message: 'Slug обязателен', trigger: 'blur'},
-    {validator: (_r, v, cb) => isValidSlug(v) ? cb() : cb(new Error('Неверный формат slug')), trigger: 'blur'}
-  ],
-  description: [{required: true, message: 'Описание обязательно', trigger: 'blur'}]
+  title:       [{ required: true, message: 'Название обязательно',    trigger: 'blur' }],
+  description: [{ required: true, message: 'Описание обязательно',    trigger: 'blur' }],
 }
 
-const slugify = (s: string) => s.toLowerCase().trim()
-    .replace(/[^\p{L}\p{N}\s-]+/gu, '')
-    .replace(/\s+/g, '-').replace(/-+/g, '-').slice(0, 80)
-const autoSlug = () => {
-  if (!form.slug) form.slug = slugify(form.title)
-}
+const previewProducts = ref<any[]>([])
+const tempPreviewUrl = ref<string | null>(null)
 
 const submit = async () => {
-  const ok = await formRef.value?.validate().catch(() => false);
+  const ok = await formRef.value?.validate().catch(() => false)
   if (!ok) return
   saving.value = true
   try {
-    await $api('/collections', {method: 'POST', body: form})
-    ElMessage.success('Коллекция создана');
+    await $api('/collections', {
+      method: 'POST',
+      body: {
+        title: form.title,
+        description: form.description,
+        is_active: form.is_active,
+        preview_image: form.preview_image,
+        productIds: form.productIds,
+      }
+    })
+    ElMessage.success('Коллекция создана')
     navigateTo('/admin/collections')
   } catch {
     ElMessage.error('Ошибка сохранения')
@@ -110,5 +117,35 @@ const submit = async () => {
     saving.value = false
   }
 }
+
 const cancel = () => navigateTo('/admin/collections')
+
+const openPreview = async () => {
+  try {
+    if (form.productIds?.length) {
+      const r: any = await $api('/products/by-ids', { method: 'POST', body: { ids: form.productIds } })
+      const list = r?.data || r?.items || r || []
+      previewProducts.value = list.map((p: any) => {
+        // берём первое фото из images[], иначе fallback на старые поля
+        const rawImg =
+            (Array.isArray(p.images) && p.images.length ? p.images[0] : null) ||
+            p.image_url || p.preview_image || p.thumbnail || ''
+        console.log(rawImg)
+        return {
+          id: p.id,
+          title: p.title,
+          price: (p.price && typeof p.price === 'object')
+              ? (p.price.current ?? 0)
+              : (p.price ?? p.final_price ?? 0),
+          image_url: $fileUrl ? $fileUrl(rawImg) : rawImg
+        }
+      })
+    } else {
+      previewProducts.value = []
+    }
+  } catch {
+    previewProducts.value = []
+  }
+  previewOpen.value = true
+}
 </script>

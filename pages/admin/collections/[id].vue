@@ -1,154 +1,185 @@
 <template>
   <div class="space-y-6">
-    <AdminPageHeader :title="`Коллекция #${form.id||''}`" subtitle="Редактирование коллекции">
+    <AdminPageHeader
+        :title="loaded ? `Коллекция — ${form.title || 'без названия'}` : 'Загрузка…'"
+        subtitle="Измените информацию, обложку и состав товаров."
+    >
       <template #actions>
         <NuxtLink to="/admin/collections">
-          <el-button>Список</el-button>
+          <el-button>Назад</el-button>
         </NuxtLink>
       </template>
     </AdminPageHeader>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <div class="lg:col-span-7 space-y-6">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6" v-if="loaded">
+      <div class="lg:col-span-12 space-y-6">
         <AdminFormSection title="Основное">
-          <el-skeleton v-if="pending" :rows="6" animated/>
-          <el-form v-else ref="formRef" :model="form" :rules="rules" label-position="top"
-                   class="grid grid-cols-1 gap-4">
+          <el-form
+              ref="formRef"
+              :model="form"
+              :rules="rules"
+              label-position="top"
+              class="grid grid-cols-1 gap-4"
+          >
             <el-form-item label="Название" prop="title">
-              <el-input v-model="form.title" @input="autoSlug"/>
+              <el-input v-model="form.title" />
             </el-form-item>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <el-form-item label="Slug" prop="slug">
-                <el-input v-model="form.slug"/>
-              </el-form-item>
-              <el-form-item label="Активна">
-                <el-switch v-model="form.is_active"/>
-              </el-form-item>
-            </div>
+
             <el-form-item label="Описание" prop="description">
-              <el-input v-model="form.description" type="textarea" :rows="3"/>
+              <el-input v-model="form.description" type="textarea" :rows="3" />
             </el-form-item>
           </el-form>
         </AdminFormSection>
+        <AdminFormSection title="Публикация и обложка">
+          <PublishCard
+              v-model:is-active="form.is_active"
+              v-model:preview-image="form.preview_image"
+              :created-at="form.created_at"
+              :updated-at="form.updated_at"
+          />
+        </AdminFormSection>
 
-        <AdminFormSection title="Товары" description="Выберите товары, которые войдут в коллекцию.">
+
+        <AdminFormSection title="Товары">
           <ProductPicker v-model="form.productIds" />
         </AdminFormSection>
       </div>
-
-      <div class="lg:col-span-5 space-y-6">
-        <AdminFormSection title="Предпросмотр">
-          <div class="rounded-xl border bg-white p-4 space-y-2">
-            <div class="text-lg font-medium">{{ form.title || 'Коллекция' }}</div>
-            <div class="text-xs text-gray-400">/{{ form.slug || 'slug' }}</div>
-            <p class="text-sm text-gray-600 mt-2">{{ form.description || 'Описание коллекции…' }}</p>
-            <div class="mt-3 text-xs text-gray-500">Выбрано товаров: {{ form.productIds.length }}</div>
-            <el-tag :type="form.is_active?'success':'info'" class="mt-2">{{
-                form.is_active ? 'Активна' : 'Черновик'
-              }}
-            </el-tag>
-            <div class="text-[11px] text-gray-400 mt-3">
-              Создано: {{ fmt(meta.created_at) }} · Обновлено: {{ fmt(meta.updated_at) }}
-            </div>
-          </div>
-        </AdminFormSection>
-      </div>
     </div>
+    <CollectionPreviewModal
+        v-model="previewOpen"
+        :title="form.title"
+        :description="form.description"
+        :preview-image="form.preview_image"
+        :temp-preview-url="tempPreviewUrl"
+        :products="previewProducts"
+    />
 
     <AdminStickyActions>
       <template #meta>Редактирование коллекции</template>
-      <el-popconfirm title="Удалить коллекцию?" @confirm="remove">
-        <template #reference>
-          <el-button type="danger" plain>Удалить</el-button>
-        </template>
-      </el-popconfirm>
+      <el-button @click="openPreview">Предпросмотр</el-button>
       <el-button @click="cancel">Отмена</el-button>
-      <el-button type="primary" :loading="saving" @click="submit">Сохранить</el-button>
+      <el-popconfirm title="Удалить коллекцию?" @confirm="remove">
+        <template #reference><el-button type="danger" plain>Удалить</el-button></template>
+      </el-popconfirm>
+      <el-button type="primary" :loading="saving" @click="save">Сохранить</el-button>
     </AdminStickyActions>
   </div>
 </template>
 
 <script setup lang="ts">
-import AdminPageHeader from "~/components/admin/ui/AdminPageHeader.vue";
+import type { FormInstance, FormRules } from 'element-plus'
+import AdminPageHeader from '~/components/admin/ui/AdminPageHeader.vue'
+import AdminFormSection from '~/components/admin/ui/AdminFormSection.vue'
+import AdminStickyActions from '~/components/admin/ui/AdminStickyActions.vue'
+import ProductPicker from '~/components/admin/products/ProductPicker.vue'
+import PublishCard from "~/components/admin/collections/PublishCard.vue";
+import CollectionPreviewModal from "~/components/admin/collections/CollectionPreviewModal.vue";
 
-definePageMeta({layout: 'admin'})
-import type {FormInstance, FormRules} from 'element-plus'
-import {isValidSlug} from '~/utils/validators'
-import AdminFormSection from "~/components/admin/ui/AdminFormSection.vue";
-import AdminStickyActions from "~/components/admin/ui/AdminStickyActions.vue";
-import ProductPicker from "~/components/admin/products/ProductPicker.vue";
-
-const {$api} = useNuxtApp();
+definePageMeta({ layout: 'admin' })
 const route = useRoute()
+const { $api, $fileUrl } = useNuxtApp()
 
-const formRef = ref<FormInstance>();
-const saving = ref(false)
-const meta = reactive<{ created_at?: string, updated_at?: string }>({})
+const id = Number(route.params.id)
+const formRef = ref<FormInstance>()
+const loaded  = ref(false)
+const saving  = ref(false)
+
 const form = reactive({
-  id: null as any,
   title: '',
-  slug: '',
   description: '',
   is_active: true,
-  productIds: [] as number[]
+  preview_image: '' as string,
+  productIds: [] as number[],
+  created_at: '' as string | null,
+  updated_at: '' as string | null
 })
+
+const previewOpen = ref(false)
+const previewProducts = ref<any[]>([])
+const tempPreviewUrl = ref<string | null>(null)
 
 const rules: FormRules = {
-  title: [{required: true, message: 'Название обязательно', trigger: 'blur'}],
-  slug: [
-    {required: true, message: 'Slug обязателен', trigger: 'blur'},
-    {validator: (_r, v, cb) => isValidSlug(v) ? cb() : cb(new Error('Неверный формат slug')), trigger: 'blur'}
-  ],
-  description: [{required: true, message: 'Описание обязательно', trigger: 'blur'}]
-}
-const slugify = (s: string) => s.toLowerCase().trim().replace(/[^\p{L}\p{N}\s-]+/gu, '').replace(/\s+/g, '-').replace(/-+/g, '-').slice(0, 80)
-const autoSlug = () => {
-  if (!form.slug) form.slug = slugify(form.title)
+  title:       [{ required: true, message: 'Название обязательно',    trigger: 'blur' }],
+  description: [{ required: true, message: 'Описание обязательно',    trigger: 'blur' }],
 }
 
-const {pending, error} = await useAsyncData('collection-one', async () => {
-  const r: any = await $api(`/collections/${route.params.id}`)
-  const c = r?.collection || r?.data || r
-  form.id = c.id;
-  form.title = c.title;
-  form.slug = c.slug || '';
-  form.description = c.description || '';
-  form.is_active = !!c.is_active
-  form.productIds = c.productIds || c.products?.map((p: any) => p.id) || []
-  meta.created_at = c.created_at;
-  meta.updated_at = c.updated_at
-  return c
+onMounted(async () => {
+  try {
+    const r: any = await $api(`/collections/${id}`)
+    const c = r.collection || r.data || r
+    form.title        = c.title ?? ''
+    form.description  = c.description ?? ''
+    form.is_active    = !!c.is_active
+    form.preview_image = c.preview_image || ''
+    form.productIds   = (c.products || []).map((p: any) => p.id)
+  } catch {
+    ElMessage.error('Не удалось загрузить коллекцию')
+    navigateTo('/admin/collections')
+  } finally {
+    loaded.value = true
+  }
 })
-const fmt = (v?: string) => v ? new Intl.DateTimeFormat('ru-RU', {
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit'
-}).format(new Date(v)) : '—'
 
-const submit = async () => {
-  const ok = await formRef.value?.validate().catch(() => false);
+const save = async () => {
+  const ok = await formRef.value?.validate().catch(() => false)
   if (!ok) return
   saving.value = true
   try {
-    await $api(`/collections/${form.id}`, {method: 'PUT', body: form})
-    ElMessage.success('Сохранено');
-    navigateTo('/admin/collections')
+    await $api(`/collections/${id}`, {
+      method: 'PUT',
+      body: {
+        title: form.title,
+        description: form.description,
+        is_active: form.is_active,
+        preview_image: form.preview_image,     // <= новое поле
+        productIds: form.productIds
+      }
+    })
+    ElMessage.success('Изменения сохранены')
   } catch {
     ElMessage.error('Ошибка сохранения')
   } finally {
     saving.value = false
   }
 }
+
 const remove = async () => {
   try {
-    await $api(`/collections/${form.id}`, {method: 'DELETE'});
-    ElMessage.success('Удалено');
+    await $api(`/collections/${id}`, { method: 'DELETE' })
+    ElMessage.success('Коллекция удалена')
     navigateTo('/admin/collections')
   } catch {
     ElMessage.error('Ошибка удаления')
   }
 }
+
 const cancel = () => navigateTo('/admin/collections')
+
+const openPreview = async () => {
+  try {
+    if (form.productIds?.length) {
+      const r: any = await $api('/products/by-ids', { method: 'POST', body: { ids: form.productIds } })
+      const list = r?.data || r?.items || r || []
+      previewProducts.value = list.map((p: any) => {
+        const rawImg =
+            (Array.isArray(p.images) && p.images.length ? p.images[0] : null) ||
+            p.image_url || p.preview_image || p.thumbnail || ''
+        console.log(rawImg)
+        return {
+          id: p.id,
+          title: p.title,
+          price: (p.price && typeof p.price === 'object')
+              ? (p.price.current ?? 0)
+              : (p.price ?? p.final_price ?? 0),
+          image_url: $fileUrl ? $fileUrl(rawImg) : rawImg
+        }
+      })
+    } else {
+      previewProducts.value = []
+    }
+  } catch {
+    previewProducts.value = []
+  }
+  previewOpen.value = true
+}
 </script>
