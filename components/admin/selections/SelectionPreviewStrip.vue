@@ -76,29 +76,26 @@ const fetchItems = async () => {
   if (!props.selectionId) return
   loading.value = true
   try {
-    // основной вариант: /selections/:id?include=products
     let res = await $api(`/selections/${props.selectionId}`, { query: { include: 'products' } })
-
-    // достанем мета
+    console.log(res);
     const m =
         res?.data || res?.selection || res || {}
     meta.value.title = m.title || ''
     meta.value.slug = m.slug || ''
 
-    // список товаров
     let list = m.products || res?.products
-    // фолбэк: /selections/:id/products
     if (!Array.isArray(list) || !list.length) {
       try {
         res = await $api(`/selections/${props.selectionId}/products`)
         list = res?.data || res?.products || res
+        console.log(list)
       } catch {}
     }
     items.value = (list || []).map((p) => ({
       id: p.id,
       title: p.title || p.name || `Товар #${p.id}`,
       price: p.price || p.fix_price || p.price_rub || 0,
-      image: p.image_url || p.image?.file_url || p.images?.[0]?.file_url || p.main_image
+      image: p.image_url || p.image?.file_url || p.images?.[0]?.file_url || p.images?.[0] || p.main_image
     }))
   } catch {
     // no-op

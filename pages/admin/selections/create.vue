@@ -38,16 +38,12 @@
 
       <div class="lg:col-span-5 space-y-6">
         <AdminFormSection title="Предпросмотр">
-          <div class="rounded-xl border bg-white p-4 space-y-2">
-            <div class="text-lg font-medium">{{ form.title || 'Подборка' }}</div>
-            <div class="text-xs text-gray-400">/{{ form.slug || 'slug' }}</div>
-            <p class="text-sm text-gray-600 mt-2">{{ form.description || 'Описание подборки…' }}</p>
-            <div class="mt-3 text-xs text-gray-500">Выбрано товаров: {{ form.productIds.length }}</div>
-            <el-tag :type="form.is_active?'success':'info'" class="mt-2">{{
-                form.is_active ? 'Активна' : 'Черновик'
-              }}
-            </el-tag>
-          </div>
+          <SelectionPreviewMini
+              :title="form.title"
+              :subtitle="form.description"
+              :products="previewProducts"
+              :loading="previewLoading"
+          />
         </AdminFormSection>
       </div>
     </div>
@@ -69,8 +65,9 @@ import {isValidSlug} from '~/utils/validators'
 import AdminFormSection from "~/components/admin/ui/AdminFormSection.vue";
 import AdminStickyActions from "~/components/admin/ui/AdminStickyActions.vue";
 import ProductPicker from "~/components/admin/products/ProductPicker.vue";
+import SelectionPreviewMini from "~/components/admin/selections/SelectionPreviewMini.vue";
 
-const {$api} = useNuxtApp()
+const {$api, $fileUrl} = useNuxtApp()
 
 const formRef = ref<FormInstance>()
 const saving = ref(false)
@@ -112,5 +109,42 @@ const submit = async () => {
     saving.value = false
   }
 }
+
+const previewProducts = ref<Array<{id:number; title?:string; price?:number; image?:string}>>([])
+const previewLoading = ref(false)
+
+
+function pickImageUrl(product: any): string {
+  const imgs = product?.images || product?.Images || []
+  if (!imgs.length) return ''
+  const cand =
+      imgs.find((i: any) => i.is_preview || i.is_main) ||
+      imgs[0]
+  const raw = cand?.file_url || cand?.url || cand || ''
+  return $fileUrl(raw) || raw
+}
+
+const fetchPreview = async () => {
+  const ids = (form.productIds || []).slice(0, 3)
+  console.log(ids)
+  if (!ids.length) { previewProducts.value = []; return }
+  previewLoading.value = true
+  try {
+    const r: any = await $api('/products/by-ids', { method: 'POST', body: { ids } })
+    const list = r?.data || r?.items || r || []
+    previewProducts.value = list.map((p: any) => ({
+      id: p.id,
+      title: p.title,
+      price: p.price.current ?? p.final_price ?? 0,
+      image: pickImageUrl(p),
+    }))
+  } catch {
+    previewProducts.value = []
+  } finally {
+    previewLoading.value = false
+  }
+}
+
+watch(() => [...form.productIds], fetchPreview, { immediate: true })
 const cancel = () => navigateTo('/admin/selections')
 </script>

@@ -84,7 +84,7 @@
               router
               :collapse="collapsed"
               :collapse-transition="false"
-              :default-active="activeIndex"
+              :default-active="route.path"
               class="border-0 !rounded-none"
           >
             <template v-for="it in nav" :key="it.to">
@@ -201,7 +201,7 @@
 <script setup lang="ts">
 import {
   Menu, User, ArrowDown, Fold, Expand, Search, Sunny, Moon,
-  House, PictureFilled, Collection, List, HomeFilled, Pear, Comment, Box,
+  House, PictureFilled, Collection, List, HomeFilled, Pear, Comment, Box, Reading
 } from '@element-plus/icons-vue'
 import CommandPalette from '~/components/admin/ui/CommandPalette.vue'
 
@@ -214,6 +214,7 @@ const nav = [
   {label: 'Коллекции', to: '/admin/collections', icon: Collection},
   {label: 'Подборки', to: '/admin/selections', icon: List},
   {label: 'Главная', to: '/admin/homepages', icon: HomeFilled},
+  {label: 'Правила', to: '/admin/rules', icon: Reading},
   {label: 'Блог', to: '/admin/articles', icon: Pear},
   {label: 'About', to: '/admin/about', icon: Comment},
   {label: 'Mail рассылка', to: '/admin/newsletters', icon: Box},
