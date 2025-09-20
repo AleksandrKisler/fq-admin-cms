@@ -11,7 +11,6 @@ export function slugifyRu(input, max = 64) {
     if (ruMap[ch]) out += ruMap[ch];
     else if (/[a-z0-9]/.test(ch)) out += ch;
     else if (/[ \-_]+/.test(ch)) out += '-';
-    else if (/[0-9]/.test(ch)) out += ch;
   }
   out = out.replace(/-+/g, '-').replace(/^-|-$/g, '');
   return out.slice(0, max);

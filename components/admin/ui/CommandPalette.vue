@@ -57,7 +57,8 @@
           </div>
 
           <div
-              class="px-4 py-2 border-t border-gray-100 dark:border-white/10 text-[11px] text-gray-500 dark:text-gray-400 flex items-center justify-between">
+              class="px-4 py-2 border-t border-gray-100 dark:border-white/10 text-[11px] text-gray-500 dark:text-gray-400 flex items-center justify-between"
+          >
             <div class="hidden sm:flex items-center gap-3">
               <span class="flex items-center gap-1"><kbd class="kbd">↑</kbd><kbd class="kbd">↓</kbd> навигация</span>
               <span class="flex items-center gap-1"><kbd class="kbd">Enter</kbd> выбрать</span>
