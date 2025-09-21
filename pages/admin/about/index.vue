@@ -1,130 +1,140 @@
 <template>
   <div class="space-y-6">
-    <AdminPageHeader title="О компании (About)" subtitle="Соберите страницу из блоков">
+    <AdminPageHeader title="О бренде (About)" subtitle="Управление страницами «О бренде». Активной может быть только одна.">
       <template #actions>
-        <div class="flex items-center gap-2">
-          <el-button @click="load" :loading="loading">Обновить</el-button>
-          <el-popconfirm title="Очистить все блоки?" @confirm="() => blocks = []">
-            <template #reference>
-              <el-button type="warning" plain>Очистить</el-button>
-            </template>
-          </el-popconfirm>
-        </div>
+        <NuxtLink to="/admin/about/create"><el-button type="primary">Создать</el-button></NuxtLink>
       </template>
     </AdminPageHeader>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <!-- Левая колонка: форма -->
-      <div class="lg:col-span-8 space-y-6">
-        <AdminFormSection title="Основное">
-          <el-form :model="form" label-position="top" class="grid grid-cols-1 gap-4">
-            <el-form-item label="Заголовок страницы">
-              <el-input v-model="form.title" placeholder="О бренде Forever Queen"/>
-            </el-form-item>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <el-form-item label="Meta title">
-                <el-input v-model="form.meta_title"/>
-              </el-form-item>
-              <el-form-item label="Meta description">
-                <el-input v-model="form.meta_description" type="textarea" :rows="2"/>
-              </el-form-item>
-            </div>
-          </el-form>
-        </AdminFormSection>
-
-        <AdminFormSection title="Конструктор блоков" description="Перетаскивайте, дублируйте, удаляйте.">
-          <AboutBlockBuilder v-model="blocks"/>
-        </AdminFormSection>
+    <el-card class="!rounded-2xl">
+      <div class="flex items-center gap-3 mb-3">
+        <el-input v-model="q" placeholder="Поиск по названию или slug" clearable class="max-w-md" @keyup.enter="load"/>
+        <el-button @click="load" :loading="loading">Искать</el-button>
+        <el-switch v-model="withDeleted" active-text="Показывать удалённые" />
       </div>
 
-      <!-- Правая колонка: предпросмотр -->
-      <div class="lg:col-span-4 space-y-6">
-        <AdminFormSection title="Предпросмотр">
-          <div class="space-y-4">
-            <div class="rounded-xl border border-gray-100 overflow-hidden bg-white">
-              <div class="p-4 border-b">
-                <div class="text-lg font-semibold">{{ form.title || 'О компании' }}</div>
-                <div class="text-xs text-gray-400">/about</div>
-              </div>
-              <div class="p-3 max-h-[70vh] overflow-auto bg-gray-50">
-                <AboutBlockRenderer :blocks="blocks"/>
-              </div>
-            </div>
-          </div>
-        </AdminFormSection>
+      <div class="overflow-hidden rounded-xl border border-gray-100 dark:border-white/10">
+        <el-table :data="items" table-layout="auto" row-key="id" stripe class="modern-table w-full rounded-xl"
+                  :empty-text="loading ? 'Загрузка…' : 'Нет данных'">
+          <el-table-column label="#" width="80" prop="id"/>
+          <el-table-column label="Название" min-width="280">
+            <template #default="{row}">
+              <div class="font-medium">{{ row.title }}</div>
+              <div class="text-xs text-gray-500">/{{ row.slug }}</div>
+            </template>
+          </el-table-column>
+          <el-table-column label="Статус" width="140" align="center">
+            <template #default="{row}">
+              <el-tag :type="row.is_active ? 'success':'info'">{{ row.is_active ? 'Опубликована':'Черновик' }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="Обновлена" width="200">
+            <template #default="{row}">
+              <span class="text-gray-500">{{ fmt(row.updated_at || row.created_at) }}</span>
+            </template>
+          </el-table-column>
 
-        <AdminFormSection title="Подсказки">
-          <ul class="text-sm leading-6 text-gray-600 dark:text-gray-300 list-disc pl-5">
-            <li><b>Hero</b> — большой баннер (изображение + заголовок, кнопка).</li>
-            <li>Можно чередовать <b>Image</b>, <b>Text</b>, <b>Quote</b>, <b>Number</b>, <b>Gallery</b>.</li>
-            <li><b>Spacer</b> добавляет отступ между блоками.</li>
-          </ul>
-        </AdminFormSection>
+          <!-- Действия -->
+          <el-table-column width="220" fixed="right" align="right">
+            <template #header><span class="th">Действия</span></template>
+            <template #default="{ row }">
+              <div class="flex items-center justify-end gap-1.5">
+                <NuxtLink :to="`/admin/about-pages/${row.id}`">
+                  <el-tooltip content="Редактировать" placement="top">
+                    <el-button size="small" circle>
+                      <el-icon><Edit/></el-icon>
+                    </el-button>
+                  </el-tooltip>
+                </NuxtLink>
+
+                <el-tooltip :content="row.is_active ? 'Снять с публикации' : 'Опубликовать'" placement="top">
+                  <el-button size="small" circle type="success" plain :loading="publishingId===row.id"
+                             @click="togglePublish(row)">
+                    <el-icon><UploadFilled/></el-icon>
+                  </el-button>
+                </el-tooltip>
+
+                <el-popconfirm title="Удалить страницу About?" @confirm="remove(row.id)">
+                  <template #reference>
+                    <el-tooltip content="Удалить" placement="top">
+                      <el-button size="small" circle type="danger">
+                        <el-icon><Delete/></el-icon>
+                      </el-button>
+                    </el-tooltip>
+                  </template>
+                </el-popconfirm>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
       </div>
-    </div>
 
-    <AdminStickyActions>
-      <template #meta>Страница «О компании»</template>
-      <el-button @click="load">Отмена</el-button>
-      <el-button type="primary" :loading="saving" @click="save">Сохранить</el-button>
-    </AdminStickyActions>
+      <div class="flex justify-end mt-3">
+        <el-pagination
+            layout="prev, pager, next"
+            :total="total"
+            :page-size="limit"
+            :current-page="page"
+            @current-change="p => { page = p; load() }"
+        />
+      </div>
+    </el-card>
   </div>
 </template>
 
-<script setup>
-definePageMeta({ layout: 'admin' })
-
+<script setup lang="ts">
+import { Edit, Delete, UploadFilled } from '@element-plus/icons-vue'
 import AdminPageHeader from '~/components/admin/ui/AdminPageHeader.vue'
-import AdminFormSection from '~/components/admin/ui/AdminFormSection.vue'
-import AdminStickyActions from '~/components/admin/ui/AdminStickyActions.vue'
-import AboutBlockBuilder from '~/components/admin/about/AboutBlockBuilder.vue'
-import AboutBlockRenderer from '~/components/admin/about/AboutBlockRenderer.vue'
 
+definePageMeta({ layout: 'admin', title: 'О бренде' })
 const { $api } = useNuxtApp()
 
+const q = ref('')
+const withDeleted = ref(false)
+const items = ref<any[]>([])
+const total = ref(0)
+const limit = 20
+const page = ref(1)
 const loading = ref(false)
-const saving  = ref(false)
+const publishingId = ref<number|null>(null)
 
-const form = reactive({
-  title: 'О компании',
-  meta_title: '',
-  meta_description: ''
-})
-
-const blocks = ref([])
-
-/* загрузка текущей версии */
 const load = async () => {
   loading.value = true
   try {
-    // ожидается ответ формата {title, meta_title, meta_description, blocks: [...]}
-    const r = await $api('/about', { method: 'GET' })
-    form.title = r?.title || 'О компании'
-    form.meta_title = r?.meta_title || ''
-    form.meta_description = r?.meta_description || ''
-    blocks.value = Array.isArray(r?.blocks) ? r.blocks : []
-    ElMessage.success('Загружено')
+    const r:any = await $api('/about-pages', {
+      query: { q: q.value || undefined, limit, offset: (page.value-1)*limit, withDeleted: withDeleted.value }
+    })
+    items.value = r.data || []
+    total.value = r.total || 0
   } catch {
-    // если первый запуск — ничего страшного
-  } finally {
-    loading.value = false
-  }
+    ElMessage.error('Не удалось загрузить список')
+  } finally { loading.value = false }
 }
-
-/* сохранение */
-const save = async () => {
-  saving.value = true
-  try {
-    const payload = { ...form, blocks: blocks.value }
-    // PUT либо POST — подставь как у тебя в бэке
-    await $api('/about', { method: 'PUT', body: payload })
-    ElMessage.success('Сохранено')
-  } catch {
-    ElMessage.error('Ошибка сохранения')
-  } finally {
-    saving.value = false
-  }
-}
-
 onMounted(load)
+
+const togglePublish = async (row:any) => {
+  try {
+    publishingId.value = row.id
+    const r:any = await $api(`/about-pages/${row.id}/publish`, { method:'POST', body:{ publish: !row.is_active }})
+    // если опубликовали — все прочие стали черновиками (логика бэка)
+    ElMessage.success(r.page?.is_active ? 'Опубликовано' : 'Снято с публикации')
+    await load()
+  } catch { ElMessage.error('Не удалось сменить статус публикации') }
+  finally { publishingId.value = null }
+}
+
+const remove = async (id:number) => {
+  try { await $api(`/about-pages/${id}`, { method:'DELETE' }); ElMessage.success('Удалено'); await load() }
+  catch { ElMessage.error('Ошибка удаления') }
+}
+
+const fmt = (s?:string) => s ? new Date(s).toLocaleString('ru-RU') : ''
 </script>
+
+<style scoped>
+:deep(.modern-table .el-table__inner-wrapper::before){ display:none; }
+:deep(.modern-table .el-table__header-wrapper th){
+  background-color: rgb(249 250 251 / 1); font-weight:600; color: rgb(75 85 99 / 1);
+}
+:deep(.modern-table .el-table__body tr:hover>td){ background-color: rgba(99,102,241,.06); }
+</style>

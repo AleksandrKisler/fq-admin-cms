@@ -34,7 +34,7 @@ const submit = async () => {
   if (!ok) return;
   loading.value = true;
   try {
-    const res: any = await $api('/auth/login', {method: 'POST', body: form});
+    const res: any = await $api('/auth/', {method: 'POST', body: form});
     token.value = res.token;
     await navigateTo('/admin');
   } catch {

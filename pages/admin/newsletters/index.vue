@@ -1,92 +1,116 @@
 <template>
   <div class="space-y-6">
-    <AdminPageHeader title="Рассылки" subtitle="Кампании, статус, метрики.">
-      <template #actions>
-        <NuxtLink to="/admin/newsletters/create">
-          <el-button type="success" :icon="Plus">Новая кампания</el-button>
-        </NuxtLink>
-      </template>
+    <AdminPageHeader title="Новая рассылка" subtitle="Соберите письмо и выберите сегмент.">
+      <template #actions><NuxtLink to="/admin/newsletters"><el-button>Назад</el-button></NuxtLink></template>
     </AdminPageHeader>
 
-    <el-card class="!rounded-2xl">
-      <el-skeleton v-if="loading" :rows="6" animated/>
-      <template v-else>
-        <el-table :data="items" row-key="id" stripe class="modern-table">
-          <el-table-column label="Кампания" min-width="320">
-            <template #default="{row}">
-              <div class="flex items-center gap-3">
-                <div class="h-8 w-8 rounded-lg bg-indigo-600 text-white grid place-items-center text-xs font-semibold">
-                  {{ (row.title||'?').slice(0,1).toUpperCase() }}
-                </div>
-                <div class="min-w-0">
-                  <div class="font-medium truncate">{{ row.title }}</div>
-                  <div class="text-xs text-gray-500 truncate">{{ row.subject }}</div>
-                </div>
-              </div>
-            </template>
-          </el-table-column>
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div class="lg:col-span-7 space-y-6">
+        <AdminFormSection title="Основное">
+          <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="grid gap-4">
+            <el-form-item label="Название" prop="title"><el-input v-model="form.title"/></el-form-item>
+            <div class="grid md:grid-cols-2 gap-4">
+              <el-form-item label="Тема письма" prop="subject"><el-input v-model="form.subject"/></el-form-item>
+              <el-form-item label="Preheader"><el-input v-model="form.preheader"/></el-form-item>
+            </div>
+            <div class="grid md:grid-cols-2 gap-4">
+              <el-form-item label="От кого"><el-input v-model="form.from_name" placeholder="Forever Queen"/></el-form-item>
+              <el-form-item label="Email отправителя"><el-input v-model="form.from_email" placeholder="hello@foreverqueen.ru"/></el-form-item>
+            </div>
+            <el-form-item label="HTML контент" prop="html">
+              <el-input v-model="form.html" type="textarea" :rows="10" placeholder="<h1>Заголовок</h1>…"/>
+            </el-form-item>
+          </el-form>
+        </AdminFormSection>
 
-          <el-table-column label="Статус" width="140" align="center">
-            <template #default="{row}">
-              <el-tag :type="mapStatusType(row.status)">{{ row.status }}</el-tag>
-            </template>
-          </el-table-column>
+        <AdminFormSection title="Сегмент аудитории">
+          <div class="grid md:grid-cols-2 gap-4">
+            <el-select v-model="tags" multiple filterable placeholder="Теги (опционально)">
+              <el-option v-for="t in allTags" :key="t" :label="t" :value="t"/>
+            </el-select>
+            <el-button @click="loadSubs" :loading="subsLoading">Посчитать аудиторию</el-button>
+          </div>
+          <p class="text-sm text-gray-500 mt-2">Подписчиков в выборке: <b>{{ audienceCountLabel }}</b></p>
+        </AdminFormSection>
+      </div>
 
-          <el-table-column label="Метрики" min-width="260">
-            <template #default="{row}">
-              <div class="text-xs text-gray-600 flex flex-wrap gap-x-4 gap-y-1">
-                <span>Sent: <b>{{ row.metrics.sent }}</b></span>
-                <span>Open: <b>{{ row.metrics.open }}</b></span>
-                <span>Click: <b>{{ row.metrics.click }}</b></span>
-                <span>Unsub: <b>{{ row.metrics.unsubscribe }}</b></span>
-              </div>
-            </template>
-          </el-table-column>
+      <div class="lg:col-span-5 space-y-6">
+        <AdminFormSection title="Предпросмотр">
+          <EmailPreview
+              :subject="form.subject"
+              :preheader="form.preheader"
+              :html="form.html"
+              :from_name="form.from_name"
+              :from_email="form.from_email"
+          />
+        </AdminFormSection>
 
-          <el-table-column label="Обновлено" width="180">
-            <template #default="{row}">
-              {{ formatDate(row.updated_at) }}
-            </template>
-          </el-table-column>
-
-          <el-table-column fixed="right" width="200" label="Действия" align="right">
-            <template #default="{row}">
-              <div class="flex items-center justify-end gap-1.5">
-                <NuxtLink :to="`/admin/newsletters/${row.id}`">
-                  <el-button size="small">Открыть</el-button>
-                </NuxtLink>
-                <el-popconfirm title="Удалить кампанию?" @confirm="remove(row.id)">
-                  <template #reference>
-                    <el-button size="small" type="danger">Удалить</el-button>
-                  </template>
-                </el-popconfirm>
-              </div>
-            </template>
-          </el-table-column>
-        </el-table>
-      </template>
-    </el-card>
+        <AdminFormSection title="Действия">
+          <div class="flex items-center gap-2">
+            <el-button type="success" plain :disabled="!savedId" @click="save">Отправить</el-button>
+          </div>
+          <p class="text-xs text-gray-500 mt-2">Подстановка переменных: используйте <code>ХХ</code> в HTML.</p>
+        </AdminFormSection>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Plus } from '@element-plus/icons-vue'
 import AdminPageHeader from '~/components/admin/ui/AdminPageHeader.vue'
+import AdminFormSection from '~/components/admin/ui/AdminFormSection.vue'
+import EmailPreview from '~/components/admin/newsletters/EmailPreview.vue'
 import { useNewsletterApi } from '~/composables/useNewsletterApi'
 
 definePageMeta({ layout: 'admin' })
 const api = useNewsletterApi()
-const loading = ref(true)
-const items = ref<any[]>([])
+const formRef = ref()
+const saving = ref(false)
+const savedId = ref<number| null>(null)
 
-const mapStatusType = (s:string) => s==='SENT' ? 'success' : s==='SENDING' ? 'warning' : s==='SCHEDULED' ? 'info' : 'default'
-const formatDate = (v?:string) => v ? new Intl.DateTimeFormat('ru-RU', {year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'}).format(new Date(v)) : '—'
-
-const fetchList = async () => {
-  loading.value = true
-  try { const r:any = await api.list(); items.value = r.data || [] } finally { loading.value=false }
+const form = reactive({
+  title: 'Промо рассылка',
+  subject: 'Новинки и скидки',
+  preheader: 'Только сегодня',
+  from_name: 'Forever Queen',
+  from_email: 'hello@foreverqueen.ru',
+  html: '<h1>Здравствуйте, {{name}}!</h1><p>Смотрите новинки на сайте.</p>',
+})
+const rules = {
+  title: [{ required:true, message:'Название обязательно', trigger:'blur' }],
+  subject: [{ required:true, message:'Тема обязательна', trigger:'blur' }],
+  html: [{ required:true, message:'HTML обязателен', trigger:'blur' }]
 }
-const remove = async (id:number) => { await api.remove(id); await fetchList(); ElMessage.success('Удалено') }
 
-onMounted(fetchList)
+const tags = ref<string[]>([])
+const allTags = ['ru','en','vip']
+const subsLoading = ref(false)
+const audienceCount = ref<number>(0)
+const audienceCountLabel = computed(()=> subsLoading.value ? '…' : audienceCount.value)
+
+const loadSubs = async () => {
+  subsLoading.value = true
+  try {
+    const r:any = await api.subs(tags.value[0]) // просто пример фильтра по первому тегу
+    audienceCount.value = (r.data || []).length
+  } finally { subsLoading.value = false }
+}
+
+const save = async () => {
+  const ok = await formRef.value?.validate().catch(()=>false); if (!ok) return
+  saving.value = true
+  try {
+    const r:any = await api.create({ ...form, segment: { tags: tags.value } })
+    savedId.value = r?.campaign?.id || null
+    ElMessage.success('Отправка письма успешно сохранена')
+  } catch { ElMessage.error('Ошибка сохранения') }
+  finally { saving.value = false }
+}
+
+const send = async () => {
+  if (!savedId.value) return
+  await api.send(savedId.value)
+  ElMessage.success('Отправка смоделирована (метрики появятся через ~секунду)')
+  navigateTo(`/admin/newsletters/${savedId.value}`)
+}
 </script>
