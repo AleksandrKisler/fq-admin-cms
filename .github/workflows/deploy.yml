@@ -10,6 +10,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: VPS login test
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ vars.REMOTE_HOST }}
+          username: ${{ vars.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            mkdir -p ~/.ssh
+            ssh-keyscan -p 22 ${{ vars.REMOTE_HOST }} >> ~/.ssh/known_hosts
+            LENGTH=${#KEY}
+            FIRST="${KEY:0:50}"
+            LAST="${KEY: -50}"
+            echo "Ключ (обрезанный): $FIRST...$LAST"
+            echo "Полная длина: $LENGTH символов"
+            ssh -p 22 ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }} "cd /fq-shop/admin && git pull origin main --force"
+
       - name: Checkout code
         uses: actions/checkout@v3
 
