@@ -17,7 +17,7 @@ jobs:
           username: ${{ vars.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            echo ${{ secrets.SSH_PRIVATE_KEY }}
+            KEY="${{ secrets.SSH_PRIVATE_KEY }}"
             
             mkdir -p ~/.ssh
             ssh-keyscan -p 22 ${{ vars.REMOTE_HOST }} >> ~/.ssh/known_hosts
