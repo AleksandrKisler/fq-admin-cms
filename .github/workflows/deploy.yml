@@ -10,13 +10,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Secret key test
-        run: |
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" | head -n 2
-          ssh -o IdentitiesOnly=yes -i ~/.ssh/id_ed25519 ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }}
-          ssh -vvv -i ~/.ssh/id_ed25519 ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }}
-          ssh -Q key
-
       - name: Checkout code
         uses: actions/checkout@v3
 
