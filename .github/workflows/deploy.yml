@@ -10,16 +10,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: VPS login test
+      - name: Secret key test
         uses: appleboy/ssh-action@v0.1.7
         with:
           host: ${{ vars.REMOTE_HOST }}
           username: ${{ vars.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            echo ${{ secrets.SSH_PRIVATE_KEY }}
+            
             mkdir -p ~/.ssh
             ssh-keyscan -p 22 ${{ vars.REMOTE_HOST }} >> ~/.ssh/known_hosts
-            
+
             LENGTH=${#KEY}
             FIRST="${KEY:0:50}"
             LAST="${KEY: -50}"
