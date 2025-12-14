@@ -9,13 +9,15 @@ jobs:
   test-secret:
     runs-on: ubuntu-latest
     steps:
-      - name: Check secret
+      - name: Check secret length
+        env:
+          SECRET: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
-          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
-            echo "❌ Secret is empty or not set"
+          if [ ${#SECRET} -lt 100 ]; then
+            echo "❌ Secret too short, probably invalid"
             exit 1
           else
-            echo "✅ Secret exists and is not empty"
+            echo "✅ Secret length looks valid"
           fi
 
   build-and-deploy:
