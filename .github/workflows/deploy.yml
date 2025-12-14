@@ -6,29 +6,19 @@ on:
   workflow_dispatch:
 
 jobs:
-  test-secret:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check secret length
-        env:
-          SECRET: ${{ secrets.SSH_PRIVATE_KEY }}
-        run: |
-          if [ ${#SECRET} -lt 100 ]; then
-            echo "❌ Secret too short, probably invalid"
-            exit 1
-          else
-            echo "✅ Secret length looks valid"
-          fi
-
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: SSH test
+        env:
+          SECRET: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          echo "$SECRET" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
+
+          head -n 2 ~/.ssh/id_ed25519
 
           ssh-keyscan -H ${{ vars.REMOTE_HOST }} >> ~/.ssh/known_hosts
 
