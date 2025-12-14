@@ -11,15 +11,11 @@ jobs:
 
     steps:
       - name: Secret key test
-        uses: appleboy/ssh-action@v0.1.7
-        with:
-          host: ${{ vars.REMOTE_HOST }}
-          username: ${{ vars.REMOTE_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            echo "Test on vps"
-            cd /fq-shop/admin
-            git pull origin main --force
+        run: |
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" | head -n 2
+          ssh -o IdentitiesOnly=yes -i ~/.ssh/id_ed25519 user@server
+          ssh -vvv -i ~/.ssh/id_ed25519 user@server
+          ssh -Q key
 
       - name: Checkout code
         uses: actions/checkout@v3
@@ -47,13 +43,13 @@ jobs:
           EXCLUDE: "/node_modules/"
 
       - name: Execute post-deployment commands
-        uses: appleboy/ssh-action@v0.1.7
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ vars.REMOTE_HOST }}
           username: ${{ vars.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            mkdir -p ~/.ssh
-            ssh-keyscan -p 22 ${{ vars.REMOTE_HOST }} >> ~/.ssh/known_hosts
-            ssh -p 22 ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }} "cd /fq-shop/admin && git pull origin main --force"
-            ssh -p 22 ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }} "source ~/.nvm/nvm.sh && ~/.nvm/versions/node/v24.12.0/bin/pm2 restart admin"
+            cd /fq-shop/admin
+            git pull origin main --force"
+            source ~/.nvm/nvm.sh
+            ~/.nvm/versions/node/v24.12.0/bin/pm2 restart admin"
