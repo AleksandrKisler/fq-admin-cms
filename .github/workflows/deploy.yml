@@ -6,6 +6,18 @@ on:
   workflow_dispatch:
 
 jobs:
+  test-secret:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check secret
+        run: |
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "❌ Secret is empty or not set"
+            exit 1
+          else
+            echo "✅ Secret exists and is not empty"
+          fi
+
   build-and-deploy:
     runs-on: ubuntu-latest
 
