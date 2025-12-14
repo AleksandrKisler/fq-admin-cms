@@ -10,22 +10,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: SSH test
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-
-          # Добавляем сервер в known_hosts
-          ssh-keyscan -H 147.45.150.152 >> ~/.ssh/known_hosts
-
-          # Подключение с указанием алгоритмов
-          ssh -o HostKeyAlgorithms=ssh-ed25519 \
-              -o PubkeyAcceptedAlgorithms=ssh-ed25519 \
-              -o IdentitiesOnly=yes \
-              -i ~/.ssh/id_ed25519 \
-              root@147.45.150.152 "echo OK"
-      
       - name: Secret key test
         run: |
           echo "${{ secrets.SSH_PRIVATE_KEY }}" | head -n 2
@@ -51,7 +35,7 @@ jobs:
         uses: easingthemes/ssh-deploy@main
         with:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          ARGS: "-avz --delete"
+          ARGS: "-arvhlgo --inplace --delete"
           SOURCE: ".output/"
           REMOTE_HOST: ${{ vars.REMOTE_HOST }}
           REMOTE_USER: ${{ vars.REMOTE_USER }}
