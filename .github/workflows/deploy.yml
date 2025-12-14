@@ -19,7 +19,6 @@ jobs:
           ssh-keyscan -H ${{ vars.REMOTE_HOST }} >> ~/.ssh/known_hosts
 
           ssh -o HostKeyAlgorithms=ssh-ed25519 \
-              -o PubkeyAcceptedAlgorithms=ssh-ed25519 \
               -i ~/.ssh/id_ed25519 \
               ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }} "echo OK"
 
