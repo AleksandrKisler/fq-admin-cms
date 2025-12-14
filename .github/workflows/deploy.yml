@@ -19,12 +19,19 @@ jobs:
           script: |
             mkdir -p ~/.ssh
             ssh-keyscan -p 22 ${{ vars.REMOTE_HOST }} >> ~/.ssh/known_hosts
+            
             LENGTH=${#KEY}
             FIRST="${KEY:0:50}"
             LAST="${KEY: -50}"
             echo "Ключ (обрезанный): $FIRST...$LAST"
             echo "Полная длина: $LENGTH символов"
-            ssh -p 22 ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }} "cd /fq-shop/admin && git pull origin main --force"
+            mkdir -p ~/.ssh
+            echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+            chmod 600 ~/.ssh/deploy_key
+
+            ssh -i ~/.ssh/deploy_key \
+                root@147.45.150.152 \
+                "cd /fq-shop/admin && git pull origin main --force"
 
       - name: Checkout code
         uses: actions/checkout@v3
