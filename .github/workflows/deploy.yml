@@ -48,13 +48,13 @@ jobs:
           SOURCE: ".output/"
           REMOTE_HOST: ${{ vars.REMOTE_HOST }}
           REMOTE_USER: ${{ vars.REMOTE_USER }}
-          TARGET: "/fq-shop/admin/.output"
+          TARGET: "/fq-shop/admin"
           EXCLUDE: "/node_modules/"
 
       - name: Execute post-deployment commands
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v0.1.7
         with:
-          host: c
+          host: ${{ vars.REMOTE_HOST }}
           username: ${{ vars.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
