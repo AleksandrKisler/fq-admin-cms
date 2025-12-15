@@ -10,6 +10,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Configure SSH client and known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          
+          ssh-keyscan -H ${{ vars.REMOTE_HOST }} >> ~/.ssh/known_hosts
+
+          echo "Host remote_server" >> ~/.ssh/config
+          echo "  HostName ${{ vars.REMOTE_HOST }}" >> ~/.ssh/config
+          echo "  User ${{ vars.REMOTE_USER }}" >> ~/.ssh/config
+          echo "  IdentityFile ~/.ssh/id_ed25519" >> ~/.ssh/config
+
+          echo "  HostKeyAlgorithms +sk-ssh-ed25519@openssh.com" >> ~/.ssh/config
+          chmod 600 ~/.ssh/config
+
       - name: Checkout code
         uses: actions/checkout@v3
 
