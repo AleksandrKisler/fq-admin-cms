@@ -40,16 +40,14 @@ jobs:
       - name: Build with Nuxt
         run: npm run build
 
-      - name: Deploy to Server via SSH
-        uses: easingthemes/ssh-deploy@main
+      - name: Deploy files using SCP
+        uses: appleboy/scp-action@v0.1.4
         with:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          ARGS: "-avz --delete"
-          SOURCE: ".output/"
-          REMOTE_HOST: ${{ vars.REMOTE_HOST }}
-          REMOTE_USER: ${{ vars.REMOTE_USER }}
-          TARGET: "/fq-shop/admin"
-          EXCLUDE: "/node_modules/"
+          host: ${{ vars.REMOTE_HOST }}
+          username: ${{ vars.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: ".output/*"
+          target: "/fq-shop/admin"
 
       - name: Execute post-deployment commands
         uses: appleboy/ssh-action@v0.1.7
