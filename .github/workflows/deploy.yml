@@ -32,7 +32,6 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: ".output/*"
           target: "/fq-shop/admin"
-          ssh_options: "-oHostKeyAlgorithms=+sk-ssh-ed25519@openssh.com,ecdsa-sha2-nistp256"
 
       - name: Execute post-deployment commands
         uses: appleboy/ssh-action@v0.1.7
