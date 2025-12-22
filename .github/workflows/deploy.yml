@@ -1,0 +1,46 @@
+name: FQ admin deploy
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build with Nuxt
+        run: npm run build
+
+      - name: Deploy files using SCP
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ vars.REMOTE_HOST }}
+          username: ${{ vars.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: ".output/*"
+          target: "/fq-shop/admin"
+
+      - name: Execute post-deployment commands
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ vars.REMOTE_HOST }}
+          username: ${{ vars.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /fq-shop/admin
+            git pull origin main --force"
+            source ~/.nvm/nvm.sh
+            ~/.nvm/versions/node/v24.12.0/bin/pm2 restart admin"

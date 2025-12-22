@@ -1,0 +1,17 @@
+{
+  "apps": [
+    {
+      "name": "admin",
+      "script": ".output/server/index.mjs",
+      "autorestart": true,
+      "restart_delay": 10000,
+      "max_memory_restart": "1G",
+      "env": {
+        "NODE_ENV": "production",
+        "PORT": 3001,
+        "NUXT_PUBLIC_API_BASE": "https://new.foreverqueen.ru/api/v1",
+        "NUXT_PUBLIC_FILES_BASE": "https://new.foreverqueen.ru"
+      }
+    }
+  ]
+}

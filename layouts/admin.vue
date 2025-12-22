@@ -216,7 +216,7 @@ const nav = [
   {label: 'Главная', to: '/admin/homepages', icon: HomeFilled},
   {label: 'Правила', to: '/admin/rules', icon: Reading},
   {label: 'Блог', to: '/admin/articles', icon: Pear},
-  {label: 'About', to: '/admin/about', icon: Comment},
+  // {label: 'About', to: '/admin/about', icon: Comment},
   {label: 'Mail рассылка', to: '/admin/newsletters', icon: Box},
 ]
 
