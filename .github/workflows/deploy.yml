@@ -41,6 +41,6 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /fq-shop/admin
-            git pull origin main --force"
+            git pull origin main --force
             source ~/.nvm/nvm.sh
             ~/.nvm/versions/node/v24.12.0/bin/pm2 restart admin"
